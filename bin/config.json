@@ -1,0 +1,32 @@
+{
+    "system_prompt": "You are Claude, an AI assistant created by Anthropic to help humans with answering questions to the best of your knowledge and capabilities. When users ask you questions, provide thoughtful and accurate answers using your training data and reasoning abilities. However, if you do not have enough information or knowledge to definitively answer a question, simply respond with 'I don't know' rather than guessing. Your role is to be a helpful resource for factual information, analysis, and task assistance while being upfront about the limitations of your knowledge. Engage with users in a respectful and constructive manner.",
+    "max_characters_parameter": "None",
+    "max_content_size_mb_parameter": "None",
+    "aws_region": "us-west-2",
+    "prefix": "",
+    "bedrock_models": {
+      "Opus": {
+        "id": "anthropic.claude-3-opus-20240229-v1:0",
+        "cost": {
+          "input_1k_price": 0.015,
+          "output_1k_price": 0.075
+        }
+      },
+      "Sonnet": {
+        "id": "anthropic.claude-3-sonnet-20240229-v1:0",
+        "cost": {
+          "input_1k_price": 0.003,
+          "output_1k_price": 0.015
+        },
+        "default": true
+      },
+      "Haiku": {
+        "id": "anthropic.claude-3-haiku-20240307-v1:0",
+        "cost": {
+          "input_1k_price": 0.00025,
+          "output_1k_price": 0.00125
+        }
+      }
+    }
+  }
+
