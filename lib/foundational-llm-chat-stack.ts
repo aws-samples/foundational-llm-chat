@@ -18,6 +18,7 @@ export class FoundationalLlmChatStack extends Stack {
     super(scope, id, props);
     // load Parameters from config file
     const parameters = new Parameters(this, "Parameters", {
+      prefix: props.config.prefix, // Prefix from the configuration
       system_prompt: props.config.system_prompt,
       max_characters_parameter: props.config.max_characters_parameter,
       max_content_size_mb_parameter: props.config.max_content_size_mb_parameter,

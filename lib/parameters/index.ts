@@ -34,6 +34,7 @@ export interface parametersProps {
   readonly max_characters_parameter: string;
   readonly max_content_size_mb_parameter: string;
   readonly bedrock_models_parameter: { [key: string]: { id: string, cost: { input_1k_price: number, output_1k_price: number } } };
+  readonly prefix: string, // Prefix from the configuration
 }
 
 export class Parameters extends Construct {
@@ -46,28 +47,28 @@ export class Parameters extends Construct {
     super(scope, id);
 
     this.system_prompt_parameter = new ssm.StringParameter(this, "SystemPromptParameter", {
-      parameterName: "system_prompt",
+      parameterName: `${props.prefix}system_prompt`,
       description: "System prompt for chainlit",
       stringValue: props.system_prompt,
       tier: ssm.ParameterTier.ADVANCED, // for 8k maximum payload
     });
 
     this.max_characters_parameter = new ssm.StringParameter(this, "MaxCharactersParameter", {
-      parameterName: "max_characters_parameter",
+      parameterName: `${props.prefix}max_characters_parameter`,
       description: "maximum number of characters per user prompt",
       stringValue: props.max_characters_parameter,
       tier: ssm.ParameterTier.STANDARD,
     });
 
     this.max_content_size_mb_parameter = new ssm.StringParameter(this, "MaxContentSizeMbParameter", {
-      parameterName: "max_content_size_mb_parameter",
+      parameterName: `${props.prefix}max_content_size_mb_parameter`,
       description: "maximum dimension for content attached in chat in MB",
       stringValue: props.max_content_size_mb_parameter,
       tier: ssm.ParameterTier.STANDARD,
     });
 
     this.bedrock_models_parameter = new ssm.StringParameter(this, "BedrockModelsParameter", {
-      parameterName: "bedrock_models_parameter",
+      parameterName: `${props.prefix}bedrock_models_parameter`,
       description: "available models with prices",
       stringValue: JSON.stringify(props.bedrock_models_parameter),
       tier: ssm.ParameterTier.STANDARD,
