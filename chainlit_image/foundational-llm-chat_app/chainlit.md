@@ -202,7 +202,7 @@ You have:
 2. Clone the repository, open the folder, install dependencies:
 
    ```bash
-   git clone https://github.com/your-repo/foundational-llm-chat.git
+   git clone https://github.com/aws-samples/foundational-llm-chat.git
    cd foundational-llm-chat
    npm install
    ```
