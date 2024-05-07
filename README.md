@@ -4,6 +4,8 @@
 
 Foundational LLM Chat is a Chainlit application built using AWS CDK that allows you to interact with Anthropic's Claude language model. It provides a user-friendly interface to chat with Claude, upload images, and receive multimodal responses. The application is deployed on AWS using various services like Amazon Bedrock, Amazon Elastic Container Service, Amazon Cognito, Amazon CloudFront, and more.
 
+<img src="/assets/app.gif"/>
+
 ## Table of Contents
 
 - [Features](#features)
