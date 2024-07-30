@@ -2,7 +2,7 @@
 
 # Foundational LLM Chat: A Chainlit App for Interacting with Amazon Bedrock LLMs
 
-Foundational LLM Chat is a Chainlit application built using AWS CDK and Converse API that allows you to interact with Amazon Bedrock language model. It provides a user-friendly interface to chat with Amazon Bedrock LLMs, upload **images or docuements**, and receive multimodal responses. The application is deployed on AWS using various services like Amazon Bedrock, Amazon Elastic Container Service, Amazon Cognito, Amazon CloudFront, and more.
+Foundational LLM Chat is a Chainlit application built using AWS CDK and Converse API that allows you to interact with Amazon Bedrock language model. It provides a user-friendly interface to chat with Amazon Bedrock LLMs, upload **images or documents**, and receive multimodal responses. The application is deployed on AWS using various services like Amazon Bedrock, Amazon Elastic Container Service, Amazon Cognito, Amazon CloudFront, and more.
 
 <img src="/assets/app.gif"/>
 
