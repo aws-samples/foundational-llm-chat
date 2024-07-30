@@ -1,6 +1,6 @@
 from config import MAX_CHARACHERS, MAX_CONTENT_SIZE_MB
 
-suported_file_string = "The tool accepts PNG, JPG, GIF and WEBP."
+suported_file_string = "The tool accepts PNG, JPG, GIF, WEBP images and doc, docx, csv, xls, xlsx, markdown, plain text, html"
 
 if MAX_CHARACHERS:
     supported_text_lenght = f"The tool accepts text up to {MAX_CHARACHERS} charchers."

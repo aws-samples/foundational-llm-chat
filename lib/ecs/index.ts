@@ -9,6 +9,7 @@ import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import * as ssm from "aws-cdk-lib/aws-ssm";
 import * as logs from "aws-cdk-lib/aws-logs";
+import { BedrockModels } from "../../bin/config";
 
 
 // Interface to define the properties required for the ECS Application construct
@@ -25,6 +26,7 @@ export interface ecsApplicationProps {
   readonly max_content_size_mb_parameter: ssm.StringParameter;
   readonly bedrock_models_parameter: ssm.StringParameter;
   readonly prefix: string;
+  readonly bedrockModels: BedrockModels;
 }
 
 export class ecsApplication extends Construct {
@@ -69,7 +71,7 @@ export class ecsApplication extends Construct {
           OAUTH_COGNITO_DOMAIN: ecs.Secret.fromSsmParameter(props.cognitoDomainParameter),
           OAUTH_COGNITO_CLIENT_ID: ecs.Secret.fromSsmParameter(props.clientIdParameter),
           CHAINLIT_URL: ecs.Secret.fromSsmParameter(props.cloudFrontDistributionURLParameter),
-          SYSTEM_PROMPT: ecs.Secret.fromSsmParameter(props.system_prompt_parameter),
+          DEFAULT_SYSTEM_PROMPT: ecs.Secret.fromSsmParameter(props.system_prompt_parameter),
           MAX_CHARACTERS: ecs.Secret.fromSsmParameter(props.max_characters_parameter),
           MAX_CONTENT_SIZE_MB: ecs.Secret.fromSsmParameter(props.max_content_size_mb_parameter),
           BEDROCK_MODELS: ecs.Secret.fromSsmParameter(props.bedrock_models_parameter),
@@ -94,12 +96,16 @@ export class ecsApplication extends Construct {
       ],
     });
 
+    // Generate the resource ARNs
+    const resourceArns = Object.values(props.bedrockModels).map(model => 
+      `arn:aws:bedrock:${model.region || props.region || "us-west-2"}::foundation-model/${model.id}`
+    );
+
     // Allow the ECS task to call the Bedrock API
     this.service.taskDefinition.taskRole.addToPrincipalPolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
-        resources: [`arn:aws:bedrock:${props.region}::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0`,
-                    `arn:aws:bedrock:${props.region}::foundation-model/anthropic.claude-3-haiku-20240307-v1:0`],
+        resources: resourceArns,
         actions: ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
       })
     );

@@ -4,6 +4,8 @@
 
 Foundational LLM Chat is a Chainlit application built using AWS CDK that allows you to interact with Anthropic's Claude language model. It provides a user-friendly interface to chat with Claude, upload images, and receive multimodal responses. The application is deployed on AWS using various services like Amazon Bedrock, Amazon Elastic Container Service, Amazon Cognito, Amazon CloudFront, and more.
 
+<img src="/assets/app.gif"/>
+
 ## Table of Contents
 
 - [Features](#features)
@@ -47,22 +49,27 @@ The architecture diagram illustrates the AWS deployment of the Foundational LLM 
 
 Before deploying the application, you can customize various settings by modifying the `config.json` file located in the `./bin` folder. Here's an explanation of each field in the `config.json` file:
 
-1. **`system_prompt`**: This field contains the system prompt that will be used by the chatbot. It defines the initial instructions and behavior of the AI assistant. You can modify this value to change the assistant's persona or initial prompt.
+1. **`default_system_prompt`**: This field contains the default system prompt that will be used by the chatbot if not specified below in the `bedrock_models` field. It defines the initial instructions and behavior of the AI assistant. You can modify this value to change the assistant's persona or initial prompt.
 
 2. **`max_characters_parameter`**: This field specifies the maximum number of characters allowed in the input text. If set to the string `"None"`, there is no character limit. You can change this value to limit the input text length if desired.
 
 3. **`max_content_size_mb_parameter`**: This field sets the maximum size of the input content (e.g., images) in megabytes. If set to the string `"None"`, there is no size limit. You can modify this value to restrict the maximum size of input content.
 
-4. **`aws_region`**: This field specifies the AWS region where the application is deployed. Make sure to use a region where Amazon Bedrock models are enabled.
+4. **`default_aws_region`**: This field specifies the AWS region where the application is deployed. You can set region also for each Amazon Bedrock model field.
 
 5. **`prefix`**: This field allows you to set a prefix for resource names created by the application. You can leave it empty or provide a custom prefix if desired.
 
 6. **`bedrock_models`**:  This field contains a dictionary of Bedrock models that the chatbot can use. Each model is identified by a *key* (e.g., "Sonnet", "Haiku") and, the *key* is the name used in the Chainlit [Chatprofile](https://docs.chainlit.io/advanced-features/chat-profiles). Each model has the following properties:
    - **`id`**: The ID or ARN of the Amazon Bedrock model. You can find the available model IDs in the [AWS documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html#model-ids-arns).
+   - **`region`**: region which is used to access the model.
+   - **`system_prompt`**: system prompt used for this model.
    - **`cost`**: An object specifying the pricing details for the model. It has the following properties:
      - **`input_1k_price`**: The cost (in USD) for 1,000 input tokens. You can find the pricing information for different models on the [AWS Bedrock pricing page](https://aws.amazon.com/bedrock/pricing/).
      - **`output_1k_price`**: The cost (in USD) for 1,000 output tokens.
    - **`default`** *[optional]*: true or false. The default selected model
+   - **`vision`** *[optional]*: true or false. If vision capabilities [are enabled](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html) for the model.
+   - **`document`** *[optional]*: true or false. If document capabilities are enabled](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html) for the model.
+   - **`tool`** *[optional]*: true or false. If tools capabilities are enabled](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html) for the model.
 
 You can modify the `bedrock_models` section to include additional models or update the existing ones according to your requirements.
 
@@ -79,34 +86,51 @@ After making the desired changes to the `config.json` file, you can proceed with
 Here an example of the json:
 ```json
 {
-  "system_prompt": "The initial prompt or instructions for the model.",
+  "default_system_prompt": "The initial prompt or instructions for the model.",
   "max_characters_parameter": "Maximum character limit for user input (set to the string 'None' for no limit).",
   "max_content_size_mb_parameter": "Maximum content size (in MB) for user inputs like images (set to the string 'None' for no limit).",
   "aws_region": "The AWS region where you are deploying the application.",
   "prefix": "Optional prefix for created resources.",
   "bedrock_models": {
-    "Sonnet": {
+    "Claude Opus": {
       "id": "The unique identifier or ARN of the Bedrock model.",
+      "system_prompt": "custom system prompt for this model",
+      "region": "region of the model in Amazon Bedrock",
       "cost": {
         "input_1k_price": "Cost (in USD) for 1,000 input tokens.",
         "output_1k_price": "Cost (in USD) for 1,000 output tokens."
       },
-      "default": "boolen value for the default selected model"
+      "default": "boolen value for the default selected model",
+      "vision": "if vision capabilities are enabled for this model",
+      "document": "if converse api for documents are enabled for this model",
+      "tool": "if tools are enabled for this model"
     },
-    "Haiku": {
+    "Claude Sonnet": {
       "id": "The unique identifier or ARN of the Bedrock model.",
+      "system_prompt": "custom system prompt for this model",
+      "region": "region of the model in Amazon Bedrock",
       "cost": {
         "input_1k_price": "Cost (in USD) for 1,000 input tokens.",
         "output_1k_price": "Cost (in USD) for 1,000 output tokens."
-      }
+      },
+      "default": "boolen value for the default selected model",
+      "vision": "if vision capabilities are enabled for this model",
+      "document": "if converse api for documents are enabled for this model",
+      "tool": "if tools are enabled for this model"
     },
-    "any other model name you are adding, used in chainlit chat profile": {
+    "Claude Sonnet 3.5": {
       "id": "The unique identifier or ARN of the Bedrock model.",
+      "system_prompt": "custom system prompt for this model",
+      "region": "region of the model in Amazon Bedrock",
       "cost": {
         "input_1k_price": "Cost (in USD) for 1,000 input tokens.",
         "output_1k_price": "Cost (in USD) for 1,000 output tokens."
-      }
-    }
+      },
+      "default": "boolen value for the default selected model",
+      "vision": "if vision capabilities are enabled for this model",
+      "document": "if converse api for documents are enabled for this model",
+      "tool": "if tools are enabled for this model"
+    },
   }
 }
 ```

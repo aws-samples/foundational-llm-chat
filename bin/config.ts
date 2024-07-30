@@ -1,12 +1,16 @@
 import { existsSync, readFileSync } from "fs";
 
+export interface BedrockModels {
+  [key: string]: { system_prompt?: string, id: string, region?: string, cost: { input_1k_price: number, output_1k_price: number }, default?: boolean, vision?: boolean, document?: boolean, tool?: boolean }
+}
+
 export interface SystemConfig {
-  system_prompt: string;
+  default_system_prompt: string;
   max_characters_parameter: string;
   max_content_size_mb_parameter: string;
-  aws_region: string;
+  default_aws_region: string;
   prefix: string;
-  bedrock_models: { [key: string]: { id: string, cost: { input_1k_price: number, output_1k_price: number }, default?: boolean } };
+  bedrock_models: BedrockModels;
 }
 
 export function getConfig(): SystemConfig {
@@ -16,33 +20,98 @@ export function getConfig(): SystemConfig {
 
   // Default config
   return {
-    system_prompt: "You are Claude, an AI assistant created by Anthropic to help humans with answering questions to the best of your knowledge and capabilities. When users ask you questions, provide thoughtful and accurate answers using your training data and reasoning abilities. However, if you do not have enough information or knowledge to definitively answer a question, simply respond with 'I don't know' rather than guessing. Your role is to be a helpful resource for factual information, analysis, and task assistance while being upfront about the limitations of your knowledge. Engage with users in a respectful and constructive manner.",
+    default_system_prompt: "You are an assistant",
     max_characters_parameter: "None",
     max_content_size_mb_parameter: "None",
-    aws_region: "us-west-2",
+    default_aws_region: "us-west-2",
     prefix: "",
     bedrock_models: {
-      "Opus": {
+      "Claude Opus": {
         "id": "anthropic.claude-3-opus-20240229-v1:0",
+        "region": "us-east-1",
         "cost": {
           "input_1k_price": 0.015,
           "output_1k_price": 0.075
-        }
+        },
+        "vision": true,
+        "document": true,
+        "tool": true
       },
-      "Sonnet": {
+      "Claude Sonnet": {
+        "system_prompt": "You are Claude, an AI assistant created by Anthropic to help humans with answering questions to the best of your knowledge and capabilities. When users ask you questions, provide thoughtful and accurate answers using your training data and reasoning abilities. However, if you do not have enough information or knowledge to definitively answer a question, simply respond with I dont know rather than guessing. Your role is to be a helpful resource for factual information, analysis, and task assistance while being upfront about the limitations of your knowledge. Engage with users in a respectful and constructive manner.",
         "id": "anthropic.claude-3-sonnet-20240229-v1:0",
         "cost": {
           "input_1k_price": 0.003,
           "output_1k_price": 0.015
         },
-        "default": true
+        "default": true,
+        "vision": true,
+        "document": true,
+        "tool": true
       },
-      "Haiku": {
+      "Claude Sonnet 3.5": {
+        "system_prompt": "You are Claude, an AI assistant created by Anthropic to help humans with answering questions to the best of your knowledge and capabilities. When users ask you questions, provide thoughtful and accurate answers using your training data and reasoning abilities. However, if you do not have enough information or knowledge to definitively answer a question, simply respond with I dont know rather than guessing. Your role is to be a helpful resource for factual information, analysis, and task assistance while being upfront about the limitations of your knowledge. Engage with users in a respectful and constructive manner.",
+        "id": "anthropic.claude-3-5-sonnet-20240620-v1:0",
+        "region": "us-west-2",
+        "cost": {
+          "input_1k_price": 0.003,
+          "output_1k_price": 0.015
+        },
+        "vision": true,
+        "document": true,
+        "tool": true
+      },
+      "Claude Haiku": {
+        "system_prompt": "You are Claude Haiku, an AI assistant created by Anthropic to help humans with answering questions to the best of your knowledge and capabilities. When users ask you questions, provide thoughtful and accurate answers using your training data and reasoning abilities. However, if you do not have enough information or knowledge to definitively answer a question, simply respond with I dont know rather than guessing. Your role is to be a helpful resource for factual information, analysis, and task assistance while being upfront about the limitations of your knowledge. Engage with users in a respectful and constructive manner.",
         "id": "anthropic.claude-3-haiku-20240307-v1:0",
         "cost": {
           "input_1k_price": 0.00025,
           "output_1k_price": 0.00125
-        }
+        },
+        "vision": true,
+        "document": true,
+        "tool": true
+      },
+      "Mistral Large 2": {
+        "id": "mistral.mistral-large-2407-v1:0",
+        "region": "us-west-2",
+        "cost": {
+          "input_1k_price": 0.003,
+          "output_1k_price": 0.009
+        },
+        "vision": false,
+        "document": true,
+        "tool": true
+      },
+      "Meta Llama 3.1 8B": {
+        "id": "meta.llama3-1-8b-instruct-v1:0",
+        "cost": {
+          "input_1k_price": 0.0003,
+          "output_1k_price": 0.0006
+        },
+        "vision": false,
+        "document": true,
+        "tool": true
+      },
+      "Meta Llama 3.1 70B": {
+        "id": "meta.llama3-1-70b-instruct-v1:0",
+        "cost": {
+          "input_1k_price": 0.00265,
+          "output_1k_price": 0.0035
+        },
+        "vision": false,
+        "document": true,
+        "tool": true
+      },
+      "Meta Llama 3.1 405B": {
+        "id": "meta.llama3-1-405b-instruct-v1:0",
+        "cost": {
+          "input_1k_price": 0.00532,
+          "output_1k_price": 0.016
+        },
+        "vision": false,
+        "document": true,
+        "tool": true
       }
     }
   };

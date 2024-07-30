@@ -19,7 +19,7 @@ export class FoundationalLlmChatStack extends Stack {
     // load Parameters from config file
     const parameters = new Parameters(this, "Parameters", {
       prefix: props.config.prefix, // Prefix from the configuration
-      system_prompt: props.config.system_prompt,
+      system_prompt: props.config.default_system_prompt,
       max_characters_parameter: props.config.max_characters_parameter,
       max_content_size_mb_parameter: props.config.max_content_size_mb_parameter,
       bedrock_models_parameter: props.config.bedrock_models
@@ -44,7 +44,7 @@ export class FoundationalLlmChatStack extends Stack {
 
     // Create an instance of the ecsApplication construct
     new ecsApplication(this, "ecsApplication", {
-      region: props.config.aws_region,
+      region: props.config.default_aws_region,
       vpc: networking.vpc, // Use the VPC from Networking
       clientIdParameter: cognito.clientIdParameter, // Use the client ID from Cognito
       cognitoDomainParameter: cognito.cognitoDomainParameter,
@@ -56,6 +56,7 @@ export class FoundationalLlmChatStack extends Stack {
       max_content_size_mb_parameter: parameters.max_content_size_mb_parameter, // Max content size from the configuration
       bedrock_models_parameter: parameters.bedrock_models_parameter, // Models configuration from the configuration
       prefix: props.config.prefix, // Prefix from the configuration
+      bedrockModels: props.config.bedrock_models //models configured
     });
   }
 }

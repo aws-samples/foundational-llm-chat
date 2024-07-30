@@ -1,4 +1,4 @@
 # we pin requirements to avoid breaking changes with packages updates
-chainlit==1.0.506
-boto3==1.34.94
-pillow==10.3.0
+chainlit==1.1.400
+boto3==1.34.150
+pillow==10.4.0
