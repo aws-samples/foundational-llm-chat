@@ -1,8 +1,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-# Foundational LLM Chat: A Chainlit App for Interacting with Claude LLM
+# Foundational LLM Chat: A Chainlit App for Interacting with Amazon Bedrock LLMs
 
-Foundational LLM Chat is a Chainlit application built using AWS CDK that allows you to interact with Anthropic's Claude language model. It provides a user-friendly interface to chat with Claude, upload images, and receive multimodal responses. The application is deployed on AWS using various services like Amazon Bedrock, Amazon Elastic Container Service, Amazon Cognito, Amazon CloudFront, and more.
+Foundational LLM Chat is a Chainlit application built using AWS CDK and Converse API that allows you to interact with Amazon Bedrock language model. It provides a user-friendly interface to chat with Amazon Bedrock LLMs, upload **images or docuements**, and receive multimodal responses. The application is deployed on AWS using various services like Amazon Bedrock, Amazon Elastic Container Service, Amazon Cognito, Amazon CloudFront, and more.
 
 <img src="/assets/app.gif"/>
 
@@ -32,7 +32,7 @@ Foundational LLM Chat is a Chainlit application built using AWS CDK that allows 
 
 ## Features
 
-- 🌐 Interact with Claude LLM using text and images
+- 🌐 Interact with Amazon Bedrock LLMs using text images and documents
 - 🔐 Secure authentication with AWS Cognito
 - 🚀 Scalable deployment using AWS ECS and Fargate
 - 🌐 Global distribution with AWS CloudFront
