@@ -391,6 +391,8 @@ Enabling HTTPS with TLS termination at both levels (ALB and ECS tasks) ensures e
 
 This AWS Sample is intended for demonstration and educational purposes only. It is not designed for production use without further modifications and hardening. Before deploying this application to a production environment, it is crucial to conduct thorough testing, security assessments, and optimizations based on your specific requirements and best practices.
 
+System prompts for claude can be obtained directly from Anthropic documentation here: [System Prompts](https://docs.anthropic.com/en/release-notes/system-prompts)
+
 ## Contributing
 
 Contributions are welcome! Please follow the usual Git workflow:
