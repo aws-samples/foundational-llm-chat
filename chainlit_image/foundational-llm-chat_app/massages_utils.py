@@ -1,6 +1,5 @@
-import base64
-import os
 import re
+from datetime import datetime, timezone
 
 def sanitize_filename(filename):
     # Remove consecutive whitespace characters
@@ -81,3 +80,31 @@ def create_doc_content(docs_dict):
                 })
     return docs
 
+def extract_and_process_prompt(prompt_data):
+    # Extract the prompt text
+    prompt_text = prompt_data['variants'][0]['templateConfiguration']['text']['text']
+    
+    # Extract input variables
+    input_variables = prompt_data['variants'][0]['templateConfiguration']['text']['inputVariables']
+    
+    # Get current date and time
+    now = datetime.now(timezone.utc)
+    today = now.strftime("%Y-%m-%d")  # Current date in YYYY-MM-DD format
+    utc_time = now.strftime("%Y-%m-%d %H:%M:%S UTC")  # Current time in YYYY-MM-DD HH:MM:SS UTC format
+    
+    # Process variables
+    for var in input_variables:
+        var_name = var['name']
+        if var_name == 'TODAY':
+            prompt_text = prompt_text.replace('{{TODAY}}', today)
+        elif var_name == 'UTC_TIME':
+            prompt_text = prompt_text.replace('{{UTC_TIME}}', utc_time)
+        elif var_name == 'AI':
+            # For now, we'll leave {{AI}} as is, but you can replace it if needed
+            pass
+        else:
+            # For other variables, you might want to prompt the user or use a default value
+            replacement = input(f"Please provide a value for {var_name}: ")
+            prompt_text = prompt_text.replace(f'{{{{{var_name}}}}}', replacement)
+    
+    return prompt_text

@@ -1,7 +1,27 @@
 import { existsSync, readFileSync } from "fs";
 
+export interface InferenceProfile {
+  prefix: string;
+  region: string;
+}
+
+export interface BedrockModel {
+  system_prompt?: string;
+  id: string;
+  inference_profile?: InferenceProfile;
+  region?: string[];
+  cost: {
+    input_1k_price: number;
+    output_1k_price: number;
+  };
+  default?: boolean;
+  vision?: boolean;
+  document?: boolean;
+  tool?: boolean;
+}
+
 export interface BedrockModels {
-  [key: string]: { system_prompt?: string, id: string, region?: string, cost: { input_1k_price: number, output_1k_price: number }, default?: boolean, vision?: boolean, document?: boolean, tool?: boolean }
+  [key: string]: BedrockModel;
 }
 
 export interface SystemConfig {
@@ -13,108 +33,189 @@ export interface SystemConfig {
   bedrock_models: BedrockModels;
 }
 
+
 export function getConfig(): SystemConfig {
   if (existsSync("./bin/config.json")) {
     return JSON.parse(readFileSync("./bin/config.json").toString("utf8"));
   }
 
-  // Default config
-  return {
-    default_system_prompt: "You are an assistant",
-    max_characters_parameter: "None",
-    max_content_size_mb_parameter: "None",
-    default_aws_region: "us-west-2",
-    prefix: "",
-    bedrock_models: {
-      "Claude Opus": {
-        "id": "anthropic.claude-3-opus-20240229-v1:0",
-        "region": "us-east-1",
-        "cost": {
-          "input_1k_price": 0.015,
-          "output_1k_price": 0.075
-        },
-        "vision": true,
-        "document": true,
-        "tool": true
+// Default config
+return {
+  default_system_prompt: "You are an assistant",
+  max_characters_parameter: "None",
+  max_content_size_mb_parameter: "None",
+  default_aws_region: "us-west-2",
+  prefix: "newv",
+  bedrock_models: {
+    "Claude Opus": {
+      "id": "us.anthropic.claude-3-opus-20240229-v1:0",
+      "inference_profile": {
+        "prefix": "us",
+        "region": "us-west-2"
       },
-      "Claude Sonnet": {
-        "system_prompt": "You are Claude, an AI assistant created by Anthropic to help humans with answering questions to the best of your knowledge and capabilities. When users ask you questions, provide thoughtful and accurate answers using your training data and reasoning abilities. However, if you do not have enough information or knowledge to definitively answer a question, simply respond with I dont know rather than guessing. Your role is to be a helpful resource for factual information, analysis, and task assistance while being upfront about the limitations of your knowledge. Engage with users in a respectful and constructive manner.",
-        "id": "anthropic.claude-3-sonnet-20240229-v1:0",
-        "cost": {
-          "input_1k_price": 0.003,
-          "output_1k_price": 0.015
-        },
-        "default": true,
-        "vision": true,
-        "document": true,
-        "tool": true
+      "region": ["us-east-1", "us-west-2"],
+      "cost": {
+        "input_1k_price": 0.015,
+        "output_1k_price": 0.075
       },
-      "Claude Sonnet 3.5": {
-        "system_prompt": "You are Claude, an AI assistant created by Anthropic to help humans with answering questions to the best of your knowledge and capabilities. When users ask you questions, provide thoughtful and accurate answers using your training data and reasoning abilities. However, if you do not have enough information or knowledge to definitively answer a question, simply respond with I dont know rather than guessing. Your role is to be a helpful resource for factual information, analysis, and task assistance while being upfront about the limitations of your knowledge. Engage with users in a respectful and constructive manner.",
-        "id": "anthropic.claude-3-5-sonnet-20240620-v1:0",
-        "region": "us-west-2",
-        "cost": {
-          "input_1k_price": 0.003,
-          "output_1k_price": 0.015
-        },
-        "vision": true,
-        "document": true,
-        "tool": true
+      "vision": true,
+      "document": true,
+      "tool": true
+    },
+    "Claude Sonnet": {
+      "id": "us.anthropic.claude-3-sonnet-20240229-v1:0",
+      "inference_profile": {
+        "prefix": "us",
+        "region": "us-west-2"
       },
-      "Claude Haiku": {
-        "system_prompt": "You are Claude Haiku, an AI assistant created by Anthropic to help humans with answering questions to the best of your knowledge and capabilities. When users ask you questions, provide thoughtful and accurate answers using your training data and reasoning abilities. However, if you do not have enough information or knowledge to definitively answer a question, simply respond with I dont know rather than guessing. Your role is to be a helpful resource for factual information, analysis, and task assistance while being upfront about the limitations of your knowledge. Engage with users in a respectful and constructive manner.",
-        "id": "anthropic.claude-3-haiku-20240307-v1:0",
-        "cost": {
-          "input_1k_price": 0.00025,
-          "output_1k_price": 0.00125
-        },
-        "vision": true,
-        "document": true,
-        "tool": true
+      "region": ["us-east-1", "us-west-2"],
+      "cost": {
+        "input_1k_price": 0.003,
+        "output_1k_price": 0.015
       },
-      "Mistral Large 2": {
-        "id": "mistral.mistral-large-2407-v1:0",
-        "region": "us-west-2",
-        "cost": {
-          "input_1k_price": 0.003,
-          "output_1k_price": 0.009
-        },
-        "vision": false,
-        "document": true,
-        "tool": true
+      "default": false,
+      "vision": true,
+      "document": true,
+      "tool": true
+    },
+    "Claude Sonnet 3.5 New": {
+      "id": "us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+      "inference_profile": {
+        "prefix": "us",
+        "region": "us-west-2"
       },
-      "Meta Llama 3.1 8B": {
-        "id": "meta.llama3-1-8b-instruct-v1:0",
-        "cost": {
-          "input_1k_price": 0.0003,
-          "output_1k_price": 0.0006
-        },
-        "vision": false,
-        "document": true,
-        "tool": true
+      "region": ["us-east-1", "us-west-2", "us-east-2"],
+      "cost": {
+        "input_1k_price": 0.003,
+        "output_1k_price": 0.015
       },
-      "Meta Llama 3.1 70B": {
-        "id": "meta.llama3-1-70b-instruct-v1:0",
-        "cost": {
-          "input_1k_price": 0.00265,
-          "output_1k_price": 0.0035
-        },
-        "vision": false,
-        "document": true,
-        "tool": true
+      "default": true,
+      "vision": true,
+      "document": true,
+      "tool": true
+    },
+    "Claude Sonnet 3.5": {
+      "id": "us.anthropic.claude-3-5-sonnet-20240620-v1:0",
+      "inference_profile": {
+        "prefix": "us",
+        "region": "us-west-2"
       },
-      "Meta Llama 3.1 405B": {
-        "id": "meta.llama3-1-405b-instruct-v1:0",
-        "cost": {
-          "input_1k_price": 0.00532,
-          "output_1k_price": 0.016
-        },
-        "vision": false,
-        "document": true,
-        "tool": true
-      }
+      "region": ["us-east-1", "us-west-2"],
+      "cost": {
+        "input_1k_price": 0.003,
+        "output_1k_price": 0.015
+      },
+      "vision": true,
+      "document": true,
+      "tool": true
+    },
+    "Claude Haiku": {
+      "id": "us.anthropic.claude-3-haiku-20240307-v1:0",
+      "inference_profile": {
+        "prefix": "us",
+        "region": "us-west-2"
+      },
+      "region": ["us-east-1", "us-west-2"],
+      "cost": {
+        "input_1k_price": 0.00025,
+        "output_1k_price": 0.00125
+      },
+      "vision": true,
+      "document": true,
+      "tool": true
+    },
+    "Mistral Large 2": {
+      "id": "mistral.mistral-large-2407-v1:0",
+      "cost": {
+        "input_1k_price": 0.003,
+        "output_1k_price": 0.009
+      },
+      "vision": false,
+      "document": true,
+      "tool": true
+    },
+    "Meta Llama 3.1 8B": {
+      "id": "meta.llama3-1-8b-instruct-v1:0",
+      "cost": {
+        "input_1k_price": 0.0003,
+        "output_1k_price": 0.0006
+      },
+      "vision": false,
+      "document": true,
+      "tool": true
+    },
+    "Meta Llama 3.1 70B": {
+      "id": "meta.llama3-1-70b-instruct-v1:0",
+      "cost": {
+        "input_1k_price": 0.00265,
+        "output_1k_price": 0.0035
+      },
+      "vision": false,
+      "document": true,
+      "tool": true
+    },
+    "Meta Llama 3.2 1B Instruct": {
+      "id": "us.meta.llama3-2-1b-instruct-v1:0",
+      "inference_profile": {
+        "prefix": "us",
+        "region": "us-west-2"
+      },
+      "region": ["us-east-1", "us-west-2"],
+      "cost": {
+        "input_1k_price": 0.0001,
+        "output_1k_price": 0.0001
+      },
+      "vision": false,
+      "document": true,
+      "tool": true
+    },
+    "Meta Llama 3.2 3B Instruct": {
+      "id": "us.meta.llama3-2-3b-instruct-v1:0",
+      "inference_profile": {
+        "prefix": "us",
+        "region": "us-west-2"
+      },
+      "region": ["us-east-1", "us-west-2"],
+      "cost": {
+        "input_1k_price": 0.00015,
+        "output_1k_price": 0.00015
+      },
+      "vision": false,
+      "document": true,
+      "tool": true
+    },
+    "Meta Llama 3.2 11B Vision Instruct": {
+      "id": "us.meta.llama3-2-11b-instruct-v1:0",
+      "inference_profile": {
+        "prefix": "us",
+        "region": "us-west-2"
+      },
+      "region": ["us-east-1", "us-west-2"],
+      "cost": {
+        "input_1k_price": 0.00035,
+        "output_1k_price": 0.00035
+      },
+      "vision": true,
+      "document": true,
+      "tool": true
+    },
+    "Meta Llama 3.2 90B Vision Instruct": {
+      "id": "us.meta.llama3-2-90b-instruct-v1:0",
+      "inference_profile": {
+        "prefix": "us",
+        "region": "us-west-2"
+      },
+      "region": ["us-east-1", "us-west-2"],
+      "cost": {
+        "input_1k_price": 0.002,
+        "output_1k_price": 0.002
+      },
+      "vision": true,
+      "document": true,
+      "tool": true
     }
-  };
+  }
+};
 }
 
 export const config: SystemConfig = getConfig();

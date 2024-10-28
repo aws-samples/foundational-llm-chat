@@ -1,7 +1,10 @@
-FROM --platform=linux/amd64 public.ecr.aws/docker/library/python:alpine3.19
+FROM --platform=linux/amd64 public.ecr.aws/docker/library/python:3.12-alpine3.20
 
 # update the apk 
 RUN apk upgrade --no-cache
+
+# add build-base for gcc compiler
+RUN apk add --no-cache build-base
 
 # add a new user and change to the new user
 # this is done to do not run the container as Root
@@ -26,5 +29,5 @@ ENV PATH="/home/chainlitworker/.local/bin:${PATH}"
 
 EXPOSE 8080
 
-CMD ["python", "-m", "chainlit", "run", "app.py", "-h", "--port", "8080"]
+CMD ["python", "-m", "chainlit", "run", "app.py", "--host", "0.0.0.0", "--port", "8080"]
 

@@ -10,6 +10,7 @@ Foundational LLM Chat is a Chainlit application built using AWS CDK and Converse
 
 - [Features](#features)
 - [Architecture](#architecture)
+- [Configuration](#configuration)
 - [Before Deployment Customization](#before-deployment-customization)
   - [Security Considerations and Prompt Injection](#security-considerations-and-prompt-injection)
   - [Prompt Engineering](#prompt-engineering)
@@ -29,26 +30,51 @@ Foundational LLM Chat is a Chainlit application built using AWS CDK and Converse
 - [License](#license)
 - [Legal Disclaimer](#legal-disclaimer)
 
-
 ## Features
 
-- 🌐 Interact with Amazon Bedrock LLMs using text images and documents
+- 🌐 Support for all text generation models in Amazon Bedrock through Converse API, including:
+  - 🤖 Anthropic Claude models:
+    - Claude 3 Opus
+    - Claude 3 Sonnet
+    - Claude 3 Haiku
+    - Claude 3.5 Sonnet
+  - 🦙 Meta Llama models:
+    - Llama 3.1 (8B, 70B)
+    - Llama 3.2 (1B, 3B, 11B Vision, 90B Vision)
+  - 🌟 Mistral models
+  - 🤖 Amazon Titan models
+  - 🔵 AI21 Jurassic models
+  - 🎯 Cohere Command models
+  - And any new text generation model added to Amazon Bedrock
+- 🖼️ Multi-modal capabilities (for vision-enabled models)
+- 📄 Document analysis through Amazon Bedrock Converse API
+- 🛠️ Tool integration capabilities through Converse API
+- 🌍 Optional cross-region inference support
+- 📝 Prompt management and versioning through Amazon Bedrock Prompt Manager
 - 🔐 Secure authentication with AWS Cognito
 - 🚀 Scalable deployment using AWS ECS and Fargate
 - 🌐 Global distribution with AWS CloudFront
 - 🔄 Sticky sessions for consistent user experience
-- 💰 Cost tracking for model usage
+- 💰 Detailed cost tracking for model usage
 - 🎚️ Configure temperature, max tokens, and other settings
 
 ## Architecture
+
+The application leverages several Amazon Bedrock features:
+- Converse API for enhanced document and vision processing
+- Cross-region inference using instance profiles
+- Prompt management for versioning and governance
+- Multi-model support across different providers
+
 ![Foundational LLM Chat Architecture](/assets/Foundational-LLM-Chat.svg)
 
-The architecture diagram illustrates the AWS deployment of the Foundational LLM Chat application. Users interact with the application through a web interface secured by Amazon Cognito authentication. The application is globally distributed using Amazon CloudFront's CDN. Within a specific AWS region, the application is deployed across multiple Availability Zones using Amazon ECS for containerized deployment. The backend integrates with Amazon Bedrock to leverage Anthropic's Claude language model, enabling users to engage in multimodal conversations with the AI assistant.
+The architecture diagram illustrates the AWS deployment of the Foundational LLM Chat application. Users interact with the application through a web interface secured by Amazon Cognito authentication. The application is globally distributed using Amazon CloudFront's CDN. Within a specific AWS region, the application is deployed across multiple Availability Zones using Amazon ECS for containerized deployment. The backend integrates with Amazon Bedrock to leverage various language models, enabling users to engage in multimodal conversations with the AI assistant.
 
-## Before deployment customization
+## Configuration
 
-Before deploying the application, you can customize various settings by modifying the `config.json` file located in the `./bin` folder. Here's an explanation of each field in the `config.json` file:
+The application is configured through a `config.json` file in the `./bin` folder. Key configuration options include:
 
+### General Settings
 1. **`default_system_prompt`**: This field contains the default system prompt that will be used by the chatbot if not specified below in the `bedrock_models` field. It defines the initial instructions and behavior of the AI assistant. You can modify this value to change the assistant's persona or initial prompt.
 
 2. **`max_characters_parameter`**: This field specifies the maximum number of characters allowed in the input text. If set to the string `"None"`, there is no character limit. You can change this value to limit the input text length if desired.
@@ -59,17 +85,25 @@ Before deploying the application, you can customize various settings by modifyin
 
 5. **`prefix`**: This field allows you to set a prefix for resource names created by the application. You can leave it empty or provide a custom prefix if desired.
 
-6. **`bedrock_models`**:  This field contains a dictionary of Bedrock models that the chatbot can use. Each model is identified by a *key* (e.g., "Sonnet", "Haiku") and, the *key* is the name used in the Chainlit [Chatprofile](https://docs.chainlit.io/advanced-features/chat-profiles). Each model has the following properties:
+### Model Configuration
+This field contains a dictionary of Bedrock models that the chatbot can use. Each model is identified by a *key* (e.g., "Sonnet", "Haiku") and, the *key* is the name used in the Chainlit [Chatprofile](https://docs.chainlit.io/advanced-features/chat-profiles). Each model has the following properties at minimum:
    - **`id`**: The ID or ARN of the Amazon Bedrock model. You can find the available model IDs in the [AWS documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html#model-ids-arns).
-   - **`region`**: region which is used to access the model.
-   - **`system_prompt`**: system prompt used for this model.
-   - **`cost`**: An object specifying the pricing details for the model. It has the following properties:
-     - **`input_1k_price`**: The cost (in USD) for 1,000 input tokens. You can find the pricing information for different models on the [AWS Bedrock pricing page](https://aws.amazon.com/bedrock/pricing/).
+   - **`region`**: an array of regions used to access the model. One if you did not enable cross-region inference, multiple for cross region inference.
+
+Optional configuration parameters include:
+- `inference_profile`: Settings for cross-region inference
+  - `prefix`: Region prefix (e.g., "us")
+  - `region`: Primary inference region
+  - Note: Required only when using cross-region inference. Models must be enabled in all specified regions
+- `system_prompt`: Custom system prompt
+- `cost`: Pricing information
+  - **`input_1k_price`**: The cost (in USD) for 1,000 input tokens. You can find the pricing information for different models on the [AWS Bedrock pricing page](https://aws.amazon.com/bedrock/pricing/).
      - **`output_1k_price`**: The cost (in USD) for 1,000 output tokens.
-   - **`default`** *[optional]*: true or false. The default selected model
+- Capability flags:
    - **`vision`** *[optional]*: true or false. If vision capabilities [are enabled](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html) for the model.
    - **`document`** *[optional]*: true or false. If document capabilities are enabled](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html) for the model.
    - **`tool`** *[optional]*: true or false. If tools capabilities are enabled](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html) for the model.
+- **`default`** *[optional]*: true or false. The default selected model
 
 You can modify the `bedrock_models` section to include additional models or update the existing ones according to your requirements.
 
@@ -86,54 +120,92 @@ After making the desired changes to the `config.json` file, you can proceed with
 Here an example of the json:
 ```json
 {
-  "default_system_prompt": "The initial prompt or instructions for the model.",
-  "max_characters_parameter": "Maximum character limit for user input (set to the string 'None' for no limit).",
-  "max_content_size_mb_parameter": "Maximum content size (in MB) for user inputs like images (set to the string 'None' for no limit).",
-  "aws_region": "The AWS region where you are deploying the application.",
-  "prefix": "Optional prefix for created resources.",
+  "default_system_prompt": "you are an assistant",
+  "max_characters_parameter": "None",
+  "max_content_size_mb_parameter": "None",
+  "default_aws_region": "us-west-2",
+  "prefix": "",
   "bedrock_models": {
-    "Claude Opus": {
-      "id": "The unique identifier or ARN of the Bedrock model.",
-      "system_prompt": "custom system prompt for this model",
-      "region": "region of the model in Amazon Bedrock",
-      "cost": {
-        "input_1k_price": "Cost (in USD) for 1,000 input tokens.",
-        "output_1k_price": "Cost (in USD) for 1,000 output tokens."
+    "Claude Sonnet 3.5 New": {
+      "system_prompt": "you are an assistant",
+      "id": "us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+      "inference_profile": {
+        "prefix": "us",
+        "region": "us-west-2"
       },
-      "default": "boolen value for the default selected model",
-      "vision": "if vision capabilities are enabled for this model",
-      "document": "if converse api for documents are enabled for this model",
-      "tool": "if tools are enabled for this model"
-    },
-    "Claude Sonnet": {
-      "id": "The unique identifier or ARN of the Bedrock model.",
-      "system_prompt": "custom system prompt for this model",
-      "region": "region of the model in Amazon Bedrock",
+      "region": ["us-east-1", "us-west-2", "us-east-2"],
       "cost": {
-        "input_1k_price": "Cost (in USD) for 1,000 input tokens.",
-        "output_1k_price": "Cost (in USD) for 1,000 output tokens."
+        "input_1k_price": 0.003,
+        "output_1k_price": 0.015
       },
-      "default": "boolen value for the default selected model",
-      "vision": "if vision capabilities are enabled for this model",
-      "document": "if converse api for documents are enabled for this model",
-      "tool": "if tools are enabled for this model"
+      "default": true,
+      "vision": true,
+      "document": true,
+      "tool": true
     },
-    "Claude Sonnet 3.5": {
-      "id": "The unique identifier or ARN of the Bedrock model.",
-      "system_prompt": "custom system prompt for this model",
-      "region": "region of the model in Amazon Bedrock",
+    "Meta Llama 3.2 90B Vision Instruct": {
+      "id": "us.meta.llama3-2-90b-instruct-v1:0",
+      "inference_profile": {
+        "prefix": "us",
+        "region": "us-west-2"
+      },
+      "region": ["us-east-1", "us-west-2"],
       "cost": {
-        "input_1k_price": "Cost (in USD) for 1,000 input tokens.",
-        "output_1k_price": "Cost (in USD) for 1,000 output tokens."
+        "input_1k_price": 0.002,
+        "output_1k_price": 0.002
       },
-      "default": "boolen value for the default selected model",
-      "vision": "if vision capabilities are enabled for this model",
-      "document": "if converse api for documents are enabled for this model",
-      "tool": "if tools are enabled for this model"
+      "vision": true,
+      "document": true,
+      "tool": true
     },
+    "Mistral Large 2": {
+      "id": "mistral.mistral-large-2407-v1:0",
+      "cost": {
+        "input_1k_price": 0.003,
+        "output_1k_price": 0.009
+      },
+      "vision": false,
+      "document": true,
+      "tool": true
+    }
   }
 }
+
 ```
+### Prompt Management
+The application leverages Amazon Bedrock Prompt Manager for:
+- Version control of prompts
+- Higher length limits for prompts
+- Centralized prompt management
+- Simplified prompt deployment and updates
+
+## Prompt Replacement
+Currently the application supports 2 automatic variable substitutions:
+- {{TODAY}}: will be replaced with `%Y-%m-%d` of the day;
+- {{UTC_TIME}}: will be replaced with `%Y-%m-%d %H:%M:%S UTC`
+
+you can edit the `extract_and_process_prompt` function inside `chainlit_image/foundational-llm-chat_app/massages_utils.py` to add more direct substitutions.
+
+## Amazon Bedrock Integration
+
+### Converse API
+The application uses Amazon Bedrock's Converse API, providing:
+- Unified interface for all Amazon Bedrock models
+- Built-in support for multi-modal interactions
+- Document processing capabilities
+- Tool integration framework
+
+### Cross-Region Support
+- Optional cross-region inference configuration
+- Requires model enablement in all specified regions
+- Configurable through inference profiles in config.json
+
+### Prompt Management
+All system prompts are stored and managed through Amazon Bedrock Prompt Manager, offering:
+- Version control and history
+- Extended prompt length limits
+- Centralized management across applications
+- Easy updates and rollbacks
 
 ### Security Considerations and Prompt Injection
 
@@ -174,7 +246,6 @@ This guide covers various techniques and best practices for prompt engineering t
   - Search & Retrieval
 
 By following the principles and techniques outlined in this guide, you can enhance the performance and reliability of your language model applications, ensuring that the AI assistant generates more relevant, coherent, and context-aware responses.
-
 ## Deploy with AWS Cloud9
 
 We recommend deploying with [AWS Cloud9](https://aws.amazon.com/cloud9/).
@@ -183,10 +254,8 @@ If you'd like to use Cloud9 to deploy the solution, you will need the following 
 - select at least `m5.large` as Instance type.
 - use `Amazon Linux 2023` as the platform.
 
-
 ## Local Deployment
 If you have decided not to use AWS Cloud9, verify that your environment satisfies the following prerequisites:
-
 ### Prerequisites
 
 Verify that your environment satisfies the following prerequisites:
@@ -213,7 +282,7 @@ You have:
 8. [AWS CDK CLI](https://docs.aws.amazon.com/cdk/latest/guide/getting_started.html) installed
 9. [Finch](https://github.com/runfinch/finch) installed or [Docker](https://www.docker.com/) installed
 
-## Deployment
+### Deployment
 
 1. Enable Amazon Bedrock models access in the deployment region:
    [How to enable Amazon Bedrock model access.](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html)
@@ -222,6 +291,7 @@ You have:
    - Claude 3 Opus
    - Claude 3 Sonnet
    - Claude 3 Haiku
+   - Claude 3.5 Sonnet
 
 2. Clone the repository, open the folder, install dependencies:
 
@@ -277,13 +347,11 @@ The Amazon CloudFront distribution is indicated in the following line: `Foundati
 1. *Self sign up is not enabled in this AWS Sample* so you need to add manually the user to you Amazon Cognito user pool to allow them to access the application. Open the AWS console and navigate to Amazon Cognito. You find a User Pool named: `foundational-llm-chat-user-pool`. Open this user pool and create a user also verifing the email address;
 2. Open the Foundational LLM Chat application in your web browser using the CloudFront distribution URL;
 3. Sign up or sign in using the AWS Cognito authentication flow;
-4. Select the desired chat profile (e.g., Sonnet, Haiku) to interact with the corresponding Claude model;
-5. Type your message or upload an image in the chat input area;
+4. Select the desired chat profile to interact with the corresponding model;
+5. Type your message or upload supported content (images/documents) in the chat input area;
 6. Adjust settings like system prompt, temperature, max tokens, and cost display as needed;
-7. View the multimodal responses from Claude, including text and images;
+7. View the multimodal responses from the model;
 8. Use this sample as a fast starting point for building demo/project based on Generative AI on a chatbot console.
-
-Here's a suggested final section for the README about clean up:
 
 ## Clean Up
 

@@ -6,9 +6,9 @@ from botocore.config import Config
 from chainlit.input_widget import Switch, Slider, TextInput
 from botocore.exceptions import ClientError
 from system_strings import suported_file_string
-from config import my_aws_config as my_config, system_prompt, bedrock_models
+from config import my_aws_config as my_config, system_prompt_list, bedrock_models
 from content_management_utils import logger, verify_content, split_message_contents, delete_contents
-from massages_utils import create_content, create_image_content, create_doc_content
+from massages_utils import create_content, create_image_content, create_doc_content, extract_and_process_prompt
 
 
 # TODO: add data persistance when fixed by chainlit
@@ -39,7 +39,6 @@ def generate_conversation(bedrock_client=None, model_id="anthropic.claude-3-sonn
     Args:
         bedrock_client: The Boto3 Bedrock runtime client.
         model_id (str): The model ID to use.
-        system_prompt (JSON) : The system prompts for the model to use.
         messages (JSON) : The messages to send to the model.
 
     Returns:
@@ -155,21 +154,34 @@ async def start():
         "directory_paths",
         set([])
     )
-    cl.user_session.set(
-        "system_prompt",
-        [{"text": model_info["system_prompt"] if "system_prompt" in model_info else system_prompt}]
-    )
     try:
         bedrock_client_config = Config(**my_config)
         if "region" in model_info:
-            bedrock_client_config.region_name = model_info["region"]
+            if len(model_info["region"]) > 1:
+                bedrock_client_config.region_name = model_info["inference_profile"]["region"]
+            else:
+                bedrock_client_config.region_name = model_info["region"]
         cl.user_session.set("bedrock_runtime", boto3.client('bedrock-runtime', config=bedrock_client_config))
     except ClientError as err:
         message = err.response["Error"]["Message"]
         logger.error("A client error occurred: %s", message)
         print("A client error occured: " +
               format(message))
-
+    try:
+        bedrock_agent_client_config = Config(**my_config)
+        cl.user_session.set("bedrock_agent_runtime", boto3.client('bedrock-agent', config=bedrock_agent_client_config))
+        system_prompt_object = cl.user_session.get("bedrock_agent_runtime").get_prompt(promptIdentifier=system_prompt_list[chat_profile].get("id"), promptVersion=system_prompt_list[chat_profile].get("version"))
+        system_prompt = extract_and_process_prompt(system_prompt_object)
+    except ClientError as err:
+        system_prompt = ""
+        message = err.response["Error"]["Message"]
+        logger.error("A client error occurred: %s", message)
+        print("A client error occured: " +
+              format(message))
+    cl.user_session.set(
+        "system_prompt",
+        [{"text": system_prompt}]
+    )
     settings = await cl.ChatSettings(
             [
                 Switch(id="streaming", label="Streaming", initial=True),

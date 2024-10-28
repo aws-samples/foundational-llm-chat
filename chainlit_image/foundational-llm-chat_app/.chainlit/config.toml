@@ -2,6 +2,7 @@
 # Whether to enable telemetry (default: true). No personal data is collected.
 enable_telemetry = false
 
+
 # List of environment variables to be provided by each user to use the app.
 user_env = []
 
@@ -26,6 +27,9 @@ latex = false
 
 # Automatically tag threads with the current chat profile (if a chat profile is used)
 auto_tag_thread = true
+
+# Allow users to edit their own messages
+edit_message = true
 
 # Authorize users to spontaneously upload files with messages
 [features.spontaneous_file_upload]
@@ -56,8 +60,6 @@ auto_tag_thread = true
     # Sample rate of the audio
     sample_rate = 44100
 
-edit_message = true
-
 [UI]
 # Name of the assistant.
 name = "Foundational LLM Chat"
@@ -68,8 +70,8 @@ name = "Foundational LLM Chat"
 # Large size content are by default collapsed for a cleaner ui
 default_collapse_content = true
 
-# Hide the chain of thought details from the user in the UI.
-hide_cot = false
+# Chain of Thought (CoT) display mode. Can be "hidden", "tool_call" or "full".
+cot = "full"
 
 # Link to your github repo. This will add a github button in the UI's header.
 # github = ""
@@ -124,4 +126,4 @@ custom_css = "/public/logo.css"
         #secondary = "#BDBDBD"
 
 [meta]
-generated_by = "1.1.306"
+generated_by = "1.3.0"

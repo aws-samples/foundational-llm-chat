@@ -9,7 +9,8 @@ import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import * as ssm from "aws-cdk-lib/aws-ssm";
 import * as logs from "aws-cdk-lib/aws-logs";
-import { BedrockModels } from "../../bin/config";
+import { BedrockModels, BedrockModel } from "../../bin/config";
+import { ModelPrompts } from "../prompts";
 
 
 // Interface to define the properties required for the ECS Application construct
@@ -21,12 +22,14 @@ export interface ecsApplicationProps {
   readonly publicLoadBalancer: elbv2.ApplicationLoadBalancer;
   readonly oauth_cognito_client_secret: secretsmanager.Secret;
   readonly cloudFrontDistributionURLParameter: ssm.StringParameter;
-  readonly system_prompt_parameter: ssm.StringParameter;
+  readonly system_prompts_parameter: ssm.StringParameter;
   readonly max_characters_parameter: ssm.StringParameter;
   readonly max_content_size_mb_parameter: ssm.StringParameter;
   readonly bedrock_models_parameter: ssm.StringParameter;
   readonly prefix: string;
   readonly bedrockModels: BedrockModels;
+  readonly accountId?: string;
+  readonly prompts_manager_list: ModelPrompts;
 }
 
 export class ecsApplication extends Construct {
@@ -71,7 +74,7 @@ export class ecsApplication extends Construct {
           OAUTH_COGNITO_DOMAIN: ecs.Secret.fromSsmParameter(props.cognitoDomainParameter),
           OAUTH_COGNITO_CLIENT_ID: ecs.Secret.fromSsmParameter(props.clientIdParameter),
           CHAINLIT_URL: ecs.Secret.fromSsmParameter(props.cloudFrontDistributionURLParameter),
-          DEFAULT_SYSTEM_PROMPT: ecs.Secret.fromSsmParameter(props.system_prompt_parameter),
+          SYSTEM_PROMPT_LIST: ecs.Secret.fromSsmParameter(props.system_prompts_parameter),
           MAX_CHARACTERS: ecs.Secret.fromSsmParameter(props.max_characters_parameter),
           MAX_CONTENT_SIZE_MB: ecs.Secret.fromSsmParameter(props.max_content_size_mb_parameter),
           BEDROCK_MODELS: ecs.Secret.fromSsmParameter(props.bedrock_models_parameter),
@@ -96,9 +99,31 @@ export class ecsApplication extends Construct {
       ],
     });
 
+    const generateArns = (model: BedrockModel, defaultRegion: string, accountId: string) => {
+      const arns: string[] = [];
+
+      // Handle region list
+      if (Array.isArray(model.region)) {
+        model.region.forEach(region => {
+          const modelId = model.inference_profile ? model.id.replace(`${model.inference_profile.prefix}.`, '') : model.id;
+          arns.push(`arn:aws:bedrock:${region}::foundation-model/${modelId}`);
+        });
+      } else {
+        // If no region list, use the default region
+        arns.push(`arn:aws:bedrock:${defaultRegion}::foundation-model/${model.id}`);
+      }
+
+      // Handle inference_profile
+      if (model.inference_profile) {
+        arns.push(`arn:aws:bedrock:${model.inference_profile.region}:${accountId}:inference-profile/${model.id}`);
+      }
+
+      return arns;
+    };
+
     // Generate the resource ARNs
-    const resourceArns = Object.values(props.bedrockModels).map(model => 
-      `arn:aws:bedrock:${model.region || props.region || "us-west-2"}::foundation-model/${model.id}`
+    const resourceArns = Object.values(props.bedrockModels).flatMap(model =>
+      generateArns(model, props.region || "us-west-2", props.accountId || "*")
     );
 
     // Allow the ECS task to call the Bedrock API
@@ -107,6 +132,20 @@ export class ecsApplication extends Construct {
         effect: iam.Effect.ALLOW,
         resources: resourceArns,
         actions: ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
+      })
+    );
+
+    // Generate ARNs for the prompts
+    const promptArns = Object.values(props.prompts_manager_list).map(prompt =>
+      `${prompt.arn}`
+    );
+
+    // Allow the ECS task to get the prompts
+    this.service.taskDefinition.taskRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        resources: promptArns,
+        actions: ["bedrock:GetPrompt"],
       })
     );
 
