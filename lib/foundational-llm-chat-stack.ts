@@ -20,7 +20,8 @@ export class FoundationalLlmChatStack extends Stack {
 
     const prompts = new Prompts(this, "Prompts", {
       bedrock_models: props.config.bedrock_models,
-      default_system_prompt: props.config.default_system_prompt
+      default_system_prompt: props.config.default_system_prompt,
+      prefix: props.config.prefix
     });
 
     // load Parameters from config file

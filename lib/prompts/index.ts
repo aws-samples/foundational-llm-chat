@@ -5,6 +5,7 @@ import { BedrockModels } from "../../bin/config";
 export interface PromptsProps {
   readonly bedrock_models: BedrockModels;
   readonly default_system_prompt: string;
+  readonly prefix: string;
 }
 
 export interface Prompt {
@@ -28,10 +29,10 @@ export class Prompts extends Construct {
       const promptText = modelConfig.system_prompt || props.default_system_prompt;
       const inputVariables = this.extractInputVariables(promptText);
 
-      const prompt = new CfnResource(this, `Prompt-${sanitizedModelName}-${index}`, {
+      const prompt = new CfnResource(this, `${props.prefix}Prompt-${sanitizedModelName}-${index}`, {
         type: 'AWS::Bedrock::Prompt',
         properties: {
-          Name: `${sanitizedModelName}Prompt${index}`,
+          Name: `${props.prefix}${sanitizedModelName}Prompt${index}`,
           Variants: [
             {
               InferenceConfiguration: { "Text": {} },
@@ -48,7 +49,7 @@ export class Prompts extends Construct {
         }
       });
 
-      const promptVersion = new CfnResource(this, `PVersion-${sanitizedModelName}-${index}`, {
+      const promptVersion = new CfnResource(this, `${props.prefix}PVersion-${sanitizedModelName}-${index}`, {
         type: 'AWS::Bedrock::PromptVersion',
         properties: {
           Description: `Prompt version for ${modelName}`,
