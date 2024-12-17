@@ -15,10 +15,10 @@ export class DataLayer extends Construct {
     super(scope, id);
 
     this.table = new dynamodb.Table(this, 'DynamoDBTableDataLayer', {
-      tableName: `${props.prefix}-table`,
-      partitionKey: { 
-        name: 'PK', 
-        type: dynamodb.AttributeType.STRING 
+      tableName: `${props.prefix.toLowerCase()}-ffchat-table`,
+      partitionKey: {
+        name: 'PK',
+        type: dynamodb.AttributeType.STRING
       },
       sortKey: {
         name: 'SK',
@@ -43,7 +43,7 @@ export class DataLayer extends Construct {
     });
 
     this.bucket = new s3.Bucket(this, 'BucketS3DataLayer', {
-      bucketName: `${props.prefix}-bucket-${Math.floor(Math.random() * (10000 - 100) + 100)}`,
+      bucketName: `${props.prefix.toLowerCase()}-ffchat-bucket-${Math.floor(Math.random() * (10000 - 100) + 100)}`,
       removalPolicy: RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
       enforceSSL: true, // Enforce SSL/TLS for all requests

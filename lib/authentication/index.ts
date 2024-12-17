@@ -34,7 +34,7 @@ export class Cognito extends Construct {
         otp: true, // One-Time Password (OTP) MFA is allowed
       },
       advancedSecurityMode: cognito.AdvancedSecurityMode.ENFORCED, // https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pool-settings-advanced-security.html
-                                                                   //  adds security feature but costs more than plain cognito.
+      //  adds security feature but costs more than plain cognito.
       passwordPolicy: {
         minLength: 8, // Minimum length of password is 8 characters
         requireDigits: true, // Require at least one digit in password
@@ -70,19 +70,24 @@ export class Cognito extends Construct {
       description: "to store env variable of ECS as secrets",
       secretStringValue: this.client.userPoolClientSecret
     });
-
     // Try to get existing domain from SSM
-    const existingDomain = ssm.StringParameter.valueFromLookup(
-      this,
-      `${props.prefix}CognitoDomainName`
-    );
+    let existingDomain: string | undefined;
+    try {
+      existingDomain = ssm.StringParameter.valueForStringParameter(
+        this,
+        `${props.prefix}CognitoDomainName`
+      );
+    } catch (error) {
+      // Parameter doesn't exist, existingDomain remains undefined
+      console.log('No existing Cognito domain found, will create new one');
+    }
 
     // Check if we got a valid domain back (not a token placeholder)
     if (existingDomain && !Token.isUnresolved(existingDomain)) {
       // If domain exists in SSM, just create the parameter with existing value
       this.cognitoDomainParameter = new ssm.StringParameter(this, 'CognitoDomainName', {
         description: 'Cognito domain name',
-        parameterName: `${props.prefix}CognitoDomainName`,
+        parameterName: `${props.prefix.toLowerCase()}CognitoDomainName`,
         stringValue: existingDomain,
         tier: ssm.ParameterTier.STANDARD,
       });
@@ -90,13 +95,13 @@ export class Cognito extends Construct {
       // If no domain exists, create a new one
       const cognitoDomain = this.userPool.addDomain("CognitoDomain", {
         cognitoDomain: {
-          domainPrefix: `${props.prefix}foundational-llm-chat${Math.floor(Math.random() * (10000 - 100) + 100)}`,
+          domainPrefix: `${props.prefix.toLowerCase()}foundational-llm-chat${Math.floor(Math.random() * (10000 - 100) + 100)}`,
         },
       });
 
       this.cognitoDomainParameter = new ssm.StringParameter(this, 'CognitoDomainName', {
         description: 'Cognito domain name',
-        parameterName: `${props.prefix}CognitoDomainName`,
+        parameterName: `${props.prefix.toLowerCase()}CognitoDomainName`,
         stringValue: cognitoDomain.baseUrl().replace("https://", ""),
         tier: ssm.ParameterTier.STANDARD,
       });
@@ -105,7 +110,7 @@ export class Cognito extends Construct {
 
     this.clientIdParameter = new ssm.StringParameter(this, 'cognitoClientid', {
       description: 'Cognito client id',
-      parameterName:  `${props.prefix}cognitoClientid`,
+      parameterName: `${props.prefix}cognitoClientid`,
       stringValue: this.client.userPoolClientId,
       tier: ssm.ParameterTier.STANDARD,
     });
