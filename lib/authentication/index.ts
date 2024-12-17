@@ -70,47 +70,37 @@ export class Cognito extends Construct {
       description: "to store env variable of ECS as secrets",
       secretStringValue: this.client.userPoolClientSecret
     });
-    // Try to get existing domain from SSM
-    let existingDomain: string | undefined;
-    try {
-      existingDomain = ssm.StringParameter.valueForStringParameter(
-        this,
-        `${props.prefix}CognitoDomainName`
-      );
-    } catch (error) {
-      // Parameter doesn't exist, existingDomain remains undefined
-      console.log('No existing Cognito domain found, will create new one');
-    }
 
-    // Check if we got a valid domain back (not a token placeholder)
-    if (existingDomain && !Token.isUnresolved(existingDomain)) {
-      // If domain exists in SSM, just create the parameter with existing value
-      this.cognitoDomainParameter = new ssm.StringParameter(this, 'CognitoDomainName', {
-        description: 'Cognito domain name',
-        parameterName: `${props.prefix.toLowerCase()}CognitoDomainName`,
-        stringValue: existingDomain,
-        tier: ssm.ParameterTier.STANDARD,
-      });
-    } else {
-      // If no domain exists, create a new one
-      const cognitoDomain = this.userPool.addDomain("CognitoDomain", {
+    // Create domain prefix
+    const domainPrefix = `${props.prefix.toLowerCase()}foundational-llm-chat${Math.floor(Math.random() * (10000 - 100) + 100)}`;
+    
+    // Try to find existing domain
+    let cognitoDomain;
+    try {
+      cognitoDomain = this.userPool.addDomain("CognitoDomain", {
         cognitoDomain: {
-          domainPrefix: `${props.prefix.toLowerCase()}foundational-llm-chat${Math.floor(Math.random() * (10000 - 100) + 100)}`,
+          domainPrefix: domainPrefix,
         },
       });
-
-      this.cognitoDomainParameter = new ssm.StringParameter(this, 'CognitoDomainName', {
-        description: 'Cognito domain name',
-        parameterName: `${props.prefix.toLowerCase()}CognitoDomainName`,
-        stringValue: cognitoDomain.baseUrl().replace("https://", ""),
-        tier: ssm.ParameterTier.STANDARD,
-      });
+    } catch (error) {
+      // If domain exists, use existing one
+      if (error instanceof Error && error.message.includes('domain already exists')) {
+        cognitoDomain = cognito.UserPoolDomain.fromDomainName(this, "ExistingDomain", domainPrefix);
+      } else {
+        throw error;
+      }
     }
 
+    this.cognitoDomainParameter = new ssm.StringParameter(this, 'CognitoDomainName', {
+      description: 'Cognito domain name',
+      parameterName: `${props.prefix}CognitoDomainName`,
+      stringValue: `${domainPrefix}.auth.${this.userPool.stack.region}.amazoncognito.com`,
+      tier: ssm.ParameterTier.STANDARD,
+    });
 
     this.clientIdParameter = new ssm.StringParameter(this, 'cognitoClientid', {
       description: 'Cognito client id',
-      parameterName: `${props.prefix}cognitoClientid`,
+      parameterName: `${props.prefix.toLowerCase()}cognitoClientid`,
       stringValue: this.client.userPoolClientId,
       tier: ssm.ParameterTier.STANDARD,
     });
