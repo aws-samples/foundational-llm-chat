@@ -30,6 +30,8 @@ export interface ecsApplicationProps {
   readonly bedrockModels: BedrockModels;
   readonly accountId?: string;
   readonly prompts_manager_list: ModelPrompts;
+  readonly dynamodb_dataLayer_name_parameter: ssm.StringParameter,
+  readonly s3_dataLayer_name_parameter: ssm.StringParameter,
 }
 
 export class ecsApplication extends Construct {
@@ -78,6 +80,8 @@ export class ecsApplication extends Construct {
           MAX_CHARACTERS: ecs.Secret.fromSsmParameter(props.max_characters_parameter),
           MAX_CONTENT_SIZE_MB: ecs.Secret.fromSsmParameter(props.max_content_size_mb_parameter),
           BEDROCK_MODELS: ecs.Secret.fromSsmParameter(props.bedrock_models_parameter),
+          DYNAMODB_DATA_LAYER_NAME: ecs.Secret.fromSsmParameter(props.dynamodb_dataLayer_name_parameter),
+          S3_DATA_LAYER_NAME: ecs.Secret.fromSsmParameter(props.s3_dataLayer_name_parameter),
         },
       },
       taskSubnets: { subnets: props.vpc.privateSubnets },
@@ -146,6 +150,29 @@ export class ecsApplication extends Construct {
         effect: iam.Effect.ALLOW,
         resources: promptArns,
         actions: ["bedrock:GetPrompt"],
+      })
+    );
+
+    // Allow the ECS task to write and get from S3 table and Dynamo
+    this.service.taskDefinition.taskRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        resources: [
+          `arn:aws:s3:::${props.s3_dataLayer_name_parameter.stringValue}`,
+          `arn:aws:s3:::${props.s3_dataLayer_name_parameter.stringValue}/*`,
+          `arn:aws:dynamodb:${props.region}:${props.accountId}:table/${props.dynamodb_dataLayer_name_parameter.stringValue}`
+        ],
+        actions: [
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:ListBucket",
+          "dynamodb:PutItem",
+          "dynamodb:GetItem",
+          "dynamodb:Query",
+          "dynamodb:Scan",
+          "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem"
+        ]
       })
     );
 

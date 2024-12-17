@@ -1,12 +1,11 @@
 import chainlit as cl
 from typing import Dict, Optional
-import json
 import boto3
 from botocore.config import Config
 from chainlit.input_widget import Switch, Slider, TextInput
 from botocore.exceptions import ClientError
 from system_strings import suported_file_string
-from config import my_aws_config as my_config, system_prompt_list, bedrock_models
+from config import my_aws_config as my_config, system_prompt_list, bedrock_models, DYNAMODB_DATA_LAYER_NAME, S3_DATA_LAYER_NAME
 from content_management_utils import logger, verify_content, split_message_contents, delete_contents
 from massages_utils import create_content, create_image_content, create_doc_content, extract_and_process_prompt
 
@@ -26,12 +25,13 @@ def oauth_callback(
 ) -> Optional[cl.User]:
     return default_user
 
-# storage_client = S3StorageClient(bucket="s3_storage")
-# cl_data._data_layer = DynamoDBDataLayer(table_name="DYNAMOTABLENAME", storage_provider=storage_client)
-
-# @cl.on_chat_resume
-# async def on_chat_resume(thread: ThreadDict):
-#     print(thread)
+# TODO: add data persistance when fixed by chainlit
+# import chainlit.data as cl_data
+# from chainlit.data.dynamodb import DynamoDBDataLayer
+# from chainlit.data.storage_clients import S3StorageClient
+# if(S3_DATA_LAYER_NAME and DYNAMODB_DATA_LAYER_NAME):
+#     storage_client = S3StorageClient(bucket=S3_DATA_LAYER_NAME)
+#     cl_data._data_layer = DynamoDBDataLayer(table_name=DYNAMODB_DATA_LAYER_NAME, storage_provider=storage_client)
 
 def generate_conversation(bedrock_client=None, model_id="anthropic.claude-3-sonnet-20240229-v1:0", input_text=None, max_tokens=1000, images=None, docs=None):
     """

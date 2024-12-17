@@ -7,7 +7,7 @@ import { Cognito } from "./authentication";
 import { CustomResources } from "./custom";
 import { Parameters } from "./parameters";
 import { Prompts } from "./prompts";
-
+import { DataLayer } from "./data_layer";
 
 // Interface to define the properties for the FoundationalLlmChatStack
 export interface FoundationalLlmChatStackProps extends StackProps {
@@ -24,13 +24,19 @@ export class FoundationalLlmChatStack extends Stack {
       prefix: props.config.prefix
     });
 
+    const dataLayer = new DataLayer(this, "DataLayer", {
+      prefix: props.config.prefix
+    });
+
     // load Parameters from config file
     const parameters = new Parameters(this, "Parameters", {
       prefix: props.config.prefix, // Prefix from the configuration
       prompts_manager_list: prompts.promptsIdList,
       max_characters_parameter: props.config.max_characters_parameter,
       max_content_size_mb_parameter: props.config.max_content_size_mb_parameter,
-      bedrock_models_parameter: props.config.bedrock_models
+      bedrock_models_parameter: props.config.bedrock_models,
+      dynamodb_dataLayer_name_parameter: dataLayer.table.tableName,
+      s3_dataLayer_name_parameter: dataLayer.bucket.bucketName
     });
 
     // Create an instance of the CustomResources construct
@@ -66,6 +72,8 @@ export class FoundationalLlmChatStack extends Stack {
       bedrock_models_parameter: parameters.bedrock_models_parameter, // Models configuration from the configuration
       prefix: props.config.prefix, // Prefix from the configuration
       bedrockModels: props.config.bedrock_models, //models configured
+      dynamodb_dataLayer_name_parameter: parameters.dynamodb_dataLayer_name_parameter,
+      s3_dataLayer_name_parameter: parameters.s3_dataLayer_name_parameter,
       accountId: props.env?.account
     });
   }

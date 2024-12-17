@@ -1,4 +1,4 @@
-import { CfnOutput, SecretValue, Duration } from "aws-cdk-lib";
+import { CfnOutput, SecretValue, Duration, Token } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as cognito from "aws-cdk-lib/aws-cognito";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
@@ -71,19 +71,37 @@ export class Cognito extends Construct {
       secretStringValue: this.client.userPoolClientSecret
     });
 
-    // Create a Cognito User Pool Domain
-    const cognitoDomain = this.userPool.addDomain("CognitoDomain", {
-      cognitoDomain: {
-        domainPrefix: `${props.prefix}foundational-llm-chat${Math.floor(Math.random() * (10000 - 100) + 100)}`, // Domain prefix for the Cognito domain
-      },
-    });
+    // Try to get existing domain from SSM
+    const existingDomain = ssm.StringParameter.valueFromLookup(
+      this,
+      `${props.prefix}CognitoDomainName`
+    );
 
-    this.cognitoDomainParameter = new ssm.StringParameter(this, 'CognitoDomainName', {
-      description: 'Cognito domain name',
-      parameterName:  `${props.prefix}CognitoDomainName`,
-      stringValue: cognitoDomain.baseUrl().replace("https://", ""), // Use the Cognito domain from Cognito (without https://),
-      tier: ssm.ParameterTier.STANDARD,
-    });
+    // Check if we got a valid domain back (not a token placeholder)
+    if (existingDomain && !Token.isUnresolved(existingDomain)) {
+      // If domain exists in SSM, just create the parameter with existing value
+      this.cognitoDomainParameter = new ssm.StringParameter(this, 'CognitoDomainName', {
+        description: 'Cognito domain name',
+        parameterName: `${props.prefix}CognitoDomainName`,
+        stringValue: existingDomain,
+        tier: ssm.ParameterTier.STANDARD,
+      });
+    } else {
+      // If no domain exists, create a new one
+      const cognitoDomain = this.userPool.addDomain("CognitoDomain", {
+        cognitoDomain: {
+          domainPrefix: `${props.prefix}foundational-llm-chat${Math.floor(Math.random() * (10000 - 100) + 100)}`,
+        },
+      });
+
+      this.cognitoDomainParameter = new ssm.StringParameter(this, 'CognitoDomainName', {
+        description: 'Cognito domain name',
+        parameterName: `${props.prefix}CognitoDomainName`,
+        stringValue: cognitoDomain.baseUrl().replace("https://", ""),
+        tier: ssm.ParameterTier.STANDARD,
+      });
+    }
+
 
     this.clientIdParameter = new ssm.StringParameter(this, 'cognitoClientid', {
       description: 'Cognito client id',

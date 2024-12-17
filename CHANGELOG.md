@@ -4,6 +4,15 @@
 
 Data Persistance using DynamoDB. Waiting for this issue: https://github.com/Chainlit/chainlit/issues/1172
 
+## [1.2.1] - 2024-12-17
+
+### Added
+- Added Amazon Nova
+- Added resources for data persistence waiting for new 2.0 chainlit version to enable them
+
+### Changed
+- bumped chainlit version to last stable
+
 ## [1.2.0] - 2024-10-28
 
 ### Added
