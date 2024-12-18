@@ -1,5 +1,6 @@
 {
   "default_system_prompt": "You are an assistant",
+  "cognito_domain":"",
   "max_characters_parameter": "None",
   "max_content_size_mb_parameter": "None",
   "default_aws_region": "us-west-2",

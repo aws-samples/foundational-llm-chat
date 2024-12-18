@@ -52,6 +52,7 @@ export class FoundationalLlmChatStack extends Stack {
 
     // Create an instance of the Cognito construct
     const cognito = new Cognito(this, "Cognito", {
+      cognito_domain: props.config.cognito_domain,
       cloudFrontDistribution: networking.cloudFrontDistribution, // Use the CloudFront distribution from Networking
       prefix: props.config.prefix, // Prefix from the configuration
     });

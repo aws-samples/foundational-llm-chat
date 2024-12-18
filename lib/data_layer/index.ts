@@ -16,9 +16,9 @@ export class DataLayer extends Construct {
 
     this.table = new dynamodb.Table(this, 'DynamoDBTableDataLayer', {
       tableName: `${props.prefix.toLowerCase()}-ffchat-table`,
-      partitionKey: {
-        name: 'PK',
-        type: dynamodb.AttributeType.STRING
+      partitionKey: { 
+        name: 'PK', 
+        type: dynamodb.AttributeType.STRING 
       },
       sortKey: {
         name: 'SK',

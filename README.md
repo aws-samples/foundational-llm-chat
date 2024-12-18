@@ -23,6 +23,7 @@ Foundational LLM Chat is a Chainlit application built using AWS CDK and Converse
   - [Deployment](#deployment)
 - [Usage](#usage)
 - [Clean Up](#clean-up)
+- [FAQ] (#faq)
 - [Production Deployment Considerations](#production-deployment-considerations)
   - [Secure Communication with HTTPS](#secure-communication-with-https)
   - [General Disclaimer](#general-disclaimer)
@@ -42,7 +43,7 @@ Foundational LLM Chat is a Chainlit application built using AWS CDK and Converse
     - Llama 3.1 (8B, 70B)
     - Llama 3.2 (1B, 3B, 11B Vision, 90B Vision)
   - 🌟 Mistral models
-  - 🤖 Amazon Titan models
+  - 🤖 Amazon Nova models
   - 🔵 AI21 Jurassic models
   - 🎯 Cohere Command models
   - And any new text generation model added to Amazon Bedrock
@@ -84,6 +85,8 @@ The application is configured through a `config.json` file in the `./bin` folder
 4. **`default_aws_region`**: This field specifies the AWS region where the application is deployed. You can set region also for each Amazon Bedrock model field.
 
 5. **`prefix`**: This field allows you to set a prefix for resource names created by the application. You can leave it empty or provide a custom prefix if desired.
+
+6. **`cognito_domain`**: This field allows you to specify an already existent cognito domain name. It is *optional* and in the first deployement is expected to not be defined. See FAQ section for the reason of this parameter existance.
 
 ### Model Configuration
 This field contains a dictionary of Bedrock models that the chatbot can use. Each model is identified by a *key* (e.g., "Sonnet", "Haiku") and, the *key* is the name used in the Chainlit [Chatprofile](https://docs.chainlit.io/advanced-features/chat-profiles). Each model has the following properties at minimum:
@@ -373,6 +376,10 @@ cdk destroy --region YOUR_DEPLOY_REGION
 Replace `YOUR_DEPLOY_REGION` with the AWS region where you deployed the application.
 
 Note that deleting the stack will not automatically delete the CloudWatch logs and Amazon ECS task definition created during the deployment. You may want to manually delete these resources if you no longer need them to avoid incurring additional costs.
+
+## FAQ
+1) what if I get: `failed: The stack named STACKNAME failed to deploy: UPDATE_ROLLBACK_COMPLETE: User pool already has a domain configured. (Service: AWSCognitoIdentityProviderService; Status Code: 400; Error Code: InvalidParameterException; Request ID: ID; Proxy: null)`?
+This is due to the following reason: https://github.com/aws/aws-cdk/issues/10062, so if you add to your config.json the optional field: "cognito_domain" with the already deployed cognito domain. You can find it inside parameter store in a parameter named: "prefixCognitoDomainName". Here an example: `databranchfoundational-llm-chat9778.auth.us-west-2.amazoncognito.com`.
 
 ## Production Deployment Considerations
 

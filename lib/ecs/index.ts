@@ -161,7 +161,7 @@ export class ecsApplication extends Construct {
           `arn:aws:s3:::${props.s3_dataLayer_name_parameter.stringValue}`,
           `arn:aws:s3:::${props.s3_dataLayer_name_parameter.stringValue}/*`,
           `arn:aws:dynamodb:${props.region}:${props.accountId}:table/${props.dynamodb_dataLayer_name_parameter.stringValue}`,
-          `arn:aws:dynamodb:${props.region}:${props.accountId}:table/${props.dynamodb_dataLayer_name_parameter.stringValue}/*`,
+          `arn:aws:dynamodb:${props.region}:${props.accountId}:table/${props.dynamodb_dataLayer_name_parameter.stringValue}/*`
         ],
         actions: [
           "s3:PutObject",

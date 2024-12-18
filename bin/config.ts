@@ -26,6 +26,7 @@ export interface BedrockModels {
 
 export interface SystemConfig {
   default_system_prompt: string;
+  cognito_domain?: string;
   max_characters_parameter: string;
   max_content_size_mb_parameter: string;
   default_aws_region: string;
