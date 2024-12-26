@@ -1,5 +1,11 @@
 body img[alt="logo"] {
     max-height: 45px !important;
-    padding-top: 5px; /* Adjust the value as needed */
-    padding-bottom: 5px; /* Adjust the value as needed */
+    padding-top: 5px;
+    /* Adjust the value as needed */
+    padding-bottom: 5px;
+    /* Adjust the value as needed */
+}
+
+a[href*='https://github.com/Chainlit/chainlit'] {
+    visibility: hidden;
 }
