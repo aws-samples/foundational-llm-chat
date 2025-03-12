@@ -8,6 +8,7 @@ from system_strings import suported_file_string
 from config import my_aws_config as my_config, system_prompt_list, bedrock_models, DYNAMODB_DATA_LAYER_NAME, S3_DATA_LAYER_NAME
 from content_management_utils import logger, verify_content, split_message_contents, delete_contents
 from massages_utils import create_content, create_image_content, create_doc_content, extract_and_process_prompt
+from chainlit.step import Step
 
 
 # TODO: add data persistance when fixed by chainlit
@@ -45,6 +46,7 @@ def generate_conversation(bedrock_client=None, model_id="anthropic.claude-3-sonn
         response (JSON): The conversation that the model generated.
 
     """
+    model_id="us.anthropic.claude-3-7-sonnet-20250219-v1:0"
     temperature = float(cl.user_session.get("temperature"))
     message_history = cl.user_session.get("message_history")
     if input_text is None and images is None:
@@ -130,6 +132,10 @@ def set_settings(settings):
         settings["precision"],
     )
     cl.user_session.set(
+        "thinking_enabled",
+        settings["thinking_enabled"],
+    )
+    cl.user_session.set(
         "system_prompt",
         [{"text": settings["system_prompt"]}])
     return
@@ -186,6 +192,7 @@ async def start():
             [
                 Switch(id="streaming", label="Streaming", initial=True),
                 TextInput(id="system_prompt", label="System Prompt", initial=cl.user_session.get("system_prompt")[0]["text"]),
+                Switch(id="thinking_enabled", label="Enable Thinking Process", initial=False),
                 Slider(
                     id="temperature",
                     label="Temperature",

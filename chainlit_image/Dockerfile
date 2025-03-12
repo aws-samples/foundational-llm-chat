@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 public.ecr.aws/docker/library/python:3.12-alpine3.20
+FROM --platform=linux/amd64 public.ecr.aws/docker/library/python:3.13-alpine3.21
 
 # update the apk 
 RUN apk upgrade --no-cache
