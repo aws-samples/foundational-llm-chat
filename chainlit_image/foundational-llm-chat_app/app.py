@@ -67,7 +67,9 @@ def generate_conversation(bedrock_client=None, model_id="us.anthropic.claude-3-7
     logger.debug(f"Raw message history being sent to the model: {message_history}")
 
     # Base inference parameters to use.
-    inference_config = {}
+    inference_config = {
+        "maxTokens": max_tokens
+    }
     
     # Only set temperature if thinking is not enabled
     if not thinking_enabled:
@@ -91,6 +93,19 @@ def generate_conversation(bedrock_client=None, model_id="us.anthropic.claude-3-7
     else:
         logger.debug("Thinking disabled")
 
+    logger.debug(
+        "Bedrock request payload:\n"
+        "Model ID: %s\n"
+        "Messages: %s\n"
+        "System Prompt: %s\n"
+        "Inference Config: %s\n"
+        "Additional Model Fields: %s",
+        model_id,
+        message_history,
+        cl.user_session.get("system_prompt"),
+        inference_config,
+        additional_model_fields
+    )
     if cl.user_session.get("streaming"):
         try: 
             return bedrock_client.converse_stream(
@@ -263,7 +278,7 @@ async def start():
                 initial=4096,
                 min=1024,
                 max=64000,
-                step=1024,
+                step=64,
             )
         )
         
@@ -297,14 +312,16 @@ async def start():
         )
     
     # Add remaining controls
+    # Use model-specific maxTokens from config if available, otherwise default to 4096
+    max_tokens_initial = model_info.get("maxTokens", 4096)
     settings_controls.extend([
         Slider(
             id="max_tokens",
             label="Maximum tokens",
-            initial=4096,
+            initial=max_tokens_initial // 2,
             min=1,
-            max=64000,
-            step=1024,
+            max=max_tokens_initial,
+            step=64,
         ),
         TextInput(id="system_prompt", label="System Prompt", initial=cl.user_session.get("system_prompt")[0]["text"]),
         Switch(id="costs", label="Show costs in the answer", initial=False),

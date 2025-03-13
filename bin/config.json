@@ -1,10 +1,10 @@
 {
   "default_system_prompt": "You are an assistant",
-  "cognito_domain":"SEE THE README, BUT FOR THE FIRST RUN THISIS AN EMPTY STRING",
+  "cognito_domain":"us-west-2fgwbazm3r.auth.us-west-2.amazoncognito.com",
   "max_characters_parameter": "None",
   "max_content_size_mb_parameter": "None",
   "default_aws_region": "us-west-2",
-  "prefix": "ADDYOURPREFIX",
+  "prefix": "v2",
   "bedrock_models": {
     "Claude Opus": {
       "id": "us.anthropic.claude-3-opus-20240229-v1:0",
@@ -18,6 +18,7 @@
         "input_1k_price": 0.015,
         "output_1k_price": 0.075
       },
+      "maxTokens": 4096,
       "vision": true,
       "document": true,
       "tool": true,
@@ -35,6 +36,7 @@
         "input_1k_price": 0.003,
         "output_1k_price": 0.015
       },
+      "maxTokens": 4096,
       "default": false,
       "vision": true,
       "document": true,
@@ -54,6 +56,7 @@
         "output_1k_price": 0.015
       },
       "default": false,
+      "maxTokens": 8192,
       "vision": true,
       "document": true,
       "tool": true,
@@ -71,6 +74,7 @@
         "input_1k_price": 0.0008,
         "output_1k_price": 0.004
       },
+      "maxTokens": 8192,
       "vision": false,
       "document": true,
       "tool": true,
@@ -88,6 +92,7 @@
         "input_1k_price": 0.003,
         "output_1k_price": 0.015
       },
+      "maxTokens": 8192,
       "vision": true,
       "document": true,
       "tool": true,
@@ -106,6 +111,7 @@
         "output_1k_price": 0.015
       },
       "default": true,
+      "maxTokens": 64000,
       "vision": true,
       "document": true,
       "tool": true,
@@ -123,6 +129,7 @@
         "input_1k_price": 0.00025,
         "output_1k_price": 0.00125
       },
+      "maxTokens": 4096,
       "vision": true,
       "document": true,
       "tool": true,
@@ -134,6 +141,7 @@
         "input_1k_price": 0.002,
         "output_1k_price": 0.006
       },
+      "maxTokens": 8192,
       "vision": false,
       "document": true,
       "tool": true,
@@ -150,13 +158,14 @@
         "region": "us-west-2"
       },
       "region": ["us-east-1", "us-east-2", "us-west-2"],
+      "maxTokens": 2048,
       "vision": false,
       "document": true,
       "tool": true,
       "reasoning": false
     },
-    "Meta Llama 3.1 70B": {
-      "id": "us.meta.llama3-1-70b-instruct-v1:0",
+    "Meta Llama 3.3 70B": {
+      "id": "us.meta.llama3-3-70b-instruct-v1:0",
       "cost": {
         "input_1k_price": 0.00072,
         "output_1k_price": 0.00072
@@ -166,6 +175,7 @@
         "region": "us-west-2"
       },
       "region": ["us-east-1", "us-east-2", "us-west-2"],
+      "maxTokens": 2048,
       "vision": false,
       "document": true,
       "tool": true,
@@ -177,6 +187,7 @@
         "input_1k_price": 0.0024,
         "output_1k_price": 0.0024
       },
+      "maxTokens": 4096,
       "vision": false,
       "document": true,
       "tool": true,
@@ -193,6 +204,7 @@
         "input_1k_price": 0.0001,
         "output_1k_price": 0.0001
       },
+      "maxTokens": 4096,
       "vision": false,
       "document": true,
       "tool": true,
@@ -209,6 +221,7 @@
         "input_1k_price": 0.00015,
         "output_1k_price": 0.00015
       },
+      "maxTokens": 4096,
       "vision": false,
       "document": true,
       "tool": true,
@@ -225,6 +238,7 @@
         "input_1k_price": 0.00016,
         "output_1k_price": 0.00016
       },
+      "maxTokens": 4096,
       "vision": true,
       "document": true,
       "tool": true,
@@ -241,6 +255,7 @@
         "input_1k_price": 0.00072,
         "output_1k_price": 0.00072
       },
+      "maxTokens": 4096,
       "vision": true,
       "document": true,
       "tool": true,
@@ -258,6 +273,7 @@
         "input_1k_price": 0.0008,
         "output_1k_price": 0.0032
       },
+      "maxTokens": 5120,
       "vision": true,
       "document": true,
       "tool": true,
@@ -275,6 +291,7 @@
         "input_1k_price": 0.00006,
         "output_1k_price": 0.00024
       },
+      "maxTokens": 5120,
       "vision": true,
       "document": true,
       "tool": true,
@@ -292,6 +309,7 @@
         "input_1k_price": 0.000035,
         "output_1k_price": 0.00014
       },
+      "maxTokens": 5120,
       "vision": false,
       "document": true,
       "tool": true,
