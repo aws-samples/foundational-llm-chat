@@ -90,6 +90,7 @@ export class ecsApplication extends Construct {
       memoryLimitMiB: 1024,
       cpu: 512,
       desiredCount: 2,
+      minHealthyPercent: 50,
       runtimePlatform: {
         operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
         cpuArchitecture: ecs.CpuArchitecture.X86_64,

@@ -4,7 +4,7 @@ import os
 import logging
 import chainlit as cl
 
-logging.basicConfig(level=logging.ERROR)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 img_supported = [bedrock_models[key]["id"] for key in bedrock_models.keys() if "vision" in bedrock_models[key] and bedrock_models[key]["vision"] == True]

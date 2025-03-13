@@ -34,7 +34,8 @@ export class Cognito extends Construct {
         sms: false, // SMS-based MFA is not allowed
         otp: true, // One-Time Password (OTP) MFA is allowed
       },
-      advancedSecurityMode: cognito.AdvancedSecurityMode.ENFORCED, // https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pool-settings-advanced-security.html
+      featurePlan: cognito.FeaturePlan.PLUS,
+      standardThreatProtectionMode: cognito.StandardThreatProtectionMode.FULL_FUNCTION, // https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pool-settings-advanced-security.html
       //  adds security feature but costs more than plain cognito.
       passwordPolicy: {
         minLength: 8, // Minimum length of password is 8 characters

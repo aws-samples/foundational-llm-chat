@@ -104,7 +104,7 @@ def extract_and_process_prompt(prompt_data):
             pass
         else:
             # For other variables, you might want to prompt the user or use a default value
-            replacement = input(f"Please provide a value for {var_name}: ")
-            prompt_text = prompt_text.replace(f'{{{{{var_name}}}}}', replacement)
+            replacement = print(f"Please provide a value for {var_name}: ")
+            prompt_text = "Your system prompt is not working correclty due to the presence of variables that are not used. We supports: TODAY, UTC_TIME, AI "
     
     return prompt_text

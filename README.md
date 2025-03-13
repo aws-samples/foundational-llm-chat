@@ -37,8 +37,10 @@ Foundational LLM Chat is a Chainlit application built using AWS CDK and Converse
   - 🤖 Anthropic Claude models:
     - Claude 3 Opus
     - Claude 3 Sonnet
-    - Claude 3 Haiku
     - Claude 3.5 Sonnet
+    - Claude 3.7 Sonnet (with thinking capabilities)
+    - Claude 3 Haiku
+    - Claude 3.5 Haiku
   - 🦙 Meta Llama models:
     - Llama 3.1 (8B, 70B)
     - Llama 3.2 (1B, 3B, 11B Vision, 90B Vision)
@@ -48,6 +50,7 @@ Foundational LLM Chat is a Chainlit application built using AWS CDK and Converse
   - 🎯 Cohere Command models
   - And any new text generation model added to Amazon Bedrock
 - 🖼️ Multi-modal capabilities (for vision-enabled models)
+- 🧠 Thinking/reasoning process visualization (for supported models)
 - 📄 Document analysis through Amazon Bedrock Converse API
 - 🛠️ Tool integration capabilities through Converse API
 - 🌍 Optional cross-region inference support
@@ -57,7 +60,8 @@ Foundational LLM Chat is a Chainlit application built using AWS CDK and Converse
 - 🌐 Global distribution with AWS CloudFront
 - 🔄 Sticky sessions for consistent user experience
 - 💰 Detailed cost tracking for model usage
-- 🎚️ Configure temperature, max tokens, and other settings
+- 🎚️ Configure temperature, max tokens, reasoning budget, and other settings
+- 🔄 Support for both streaming and non-streaming modes
 
 ## Architecture
 
@@ -106,6 +110,7 @@ Optional configuration parameters include:
    - **`vision`** *[optional]*: true or false. If vision capabilities [are enabled](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html) for the model.
    - **`document`** *[optional]*: true or false. If document capabilities are enabled](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html) for the model.
    - **`tool`** *[optional]*: true or false. If tools capabilities are enabled](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html) for the model.
+   - **`reasoning`** *[optional]*: true or false. If thinking/reasoning capabilities are enabled for the model (currently supported by Claude 3.7 models).
 - **`default`** *[optional]*: true or false. The default selected model
 
 You can modify the `bedrock_models` section to include additional models or update the existing ones according to your requirements.
@@ -129,6 +134,20 @@ Here an example of the json:
   "default_aws_region": "us-west-2",
   "prefix": "",
   "bedrock_models": {
+    "Claude 3.7 Sonnet": {
+      "system_prompt": "you are an assistant",
+      "id": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+      "region": ["us-west-2"],
+      "cost": {
+        "input_1k_price": 0.003,
+        "output_1k_price": 0.015
+      },
+      "default": true,
+      "vision": true,
+      "document": true,
+      "tool": true,
+      "reasoning": true
+    },
     "Claude Sonnet 3.5 New": {
       "system_prompt": "you are an assistant",
       "id": "us.anthropic.claude-3-5-sonnet-20241022-v2:0",
@@ -141,7 +160,6 @@ Here an example of the json:
         "input_1k_price": 0.003,
         "output_1k_price": 0.015
       },
-      "default": true,
       "vision": true,
       "document": true,
       "tool": true
@@ -352,9 +370,19 @@ The Amazon CloudFront distribution is indicated in the following line: `Foundati
 3. Sign up or sign in using the AWS Cognito authentication flow;
 4. Select the desired chat profile to interact with the corresponding model;
 5. Type your message or upload supported content (images/documents) in the chat input area;
-6. Adjust settings like system prompt, temperature, max tokens, and cost display as needed;
-7. View the multimodal responses from the model;
+6. Adjust settings like system prompt, temperature, max tokens, thinking options (for supported models), and cost display as needed;
+7. View the multimodal responses and thinking process (if enabled) from the model;
 8. Use this sample as a fast starting point for building demo/project based on Generative AI on a chatbot console.
+
+### Thinking/Reasoning Process
+
+For models that support thinking capabilities (like Claude 3.7 Sonnet):
+
+1. The thinking process is enabled by default and displayed as a separate step below the main response
+2. You can toggle thinking on/off using the "Enable Thinking Process" switch in settings
+3. When thinking is enabled, temperature control is automatically disabled (as required by the API)
+4. You can adjust the reasoning budget (token limit for thinking) in the settings
+5. The thinking process works in both streaming and non-streaming modes
 
 ## Clean Up
 

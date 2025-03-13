@@ -18,6 +18,7 @@ export interface BedrockModel {
   vision?: boolean;
   document?: boolean;
   tool?: boolean;
+  reasoning?: boolean;
 }
 
 export interface BedrockModels {
@@ -61,7 +62,8 @@ return {
       },
       "vision": true,
       "document": true,
-      "tool": true
+      "tool": true,
+      "reasoning": false
     },
     "Claude Sonnet": {
       "id": "us.anthropic.claude-3-sonnet-20240229-v1:0",
@@ -77,7 +79,8 @@ return {
       "default": false,
       "vision": true,
       "document": true,
-      "tool": true
+      "tool": true,
+      "reasoning": false
     },
     "Claude Sonnet 3.5 New": {
       "id": "us.anthropic.claude-3-5-sonnet-20241022-v2:0",
@@ -93,7 +96,8 @@ return {
       "default": true,
       "vision": true,
       "document": true,
-      "tool": true
+      "tool": true,
+      "reasoning": false
     },
     "Claude Sonnet 3.5": {
       "id": "us.anthropic.claude-3-5-sonnet-20240620-v1:0",
@@ -108,7 +112,8 @@ return {
       },
       "vision": true,
       "document": true,
-      "tool": true
+      "tool": true,
+      "reasoning": false
     },
     "Claude Haiku": {
       "id": "us.anthropic.claude-3-haiku-20240307-v1:0",
@@ -123,7 +128,8 @@ return {
       },
       "vision": true,
       "document": true,
-      "tool": true
+      "tool": true,
+      "reasoning": false
     },
     "Mistral Large 2": {
       "id": "mistral.mistral-large-2407-v1:0",

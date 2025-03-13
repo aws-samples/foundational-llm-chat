@@ -8,7 +8,7 @@ from system_strings import suported_file_string
 from config import my_aws_config as my_config, system_prompt_list, bedrock_models, DYNAMODB_DATA_LAYER_NAME, S3_DATA_LAYER_NAME
 from content_management_utils import logger, verify_content, split_message_contents, delete_contents
 from massages_utils import create_content, create_image_content, create_doc_content, extract_and_process_prompt
-from chainlit.step import Step
+from thinking_manager import ThinkingBlockManager
 
 
 # TODO: add data persistance when fixed by chainlit
@@ -34,7 +34,7 @@ def oauth_callback(
 #     storage_client = S3StorageClient(bucket=S3_DATA_LAYER_NAME)
 #     cl_data._data_layer = DynamoDBDataLayer(table_name=DYNAMODB_DATA_LAYER_NAME, storage_provider=storage_client)
 
-def generate_conversation(bedrock_client=None, model_id="anthropic.claude-3-sonnet-20240229-v1:0", input_text=None, max_tokens=1000, images=None, docs=None):
+def generate_conversation(bedrock_client=None, model_id="us.anthropic.claude-3-7-sonnet-20250219-v1:0", input_text=None, max_tokens=1000, images=None, docs=None):
     """
     Sends messages to a model.
     Args:
@@ -46,11 +46,14 @@ def generate_conversation(bedrock_client=None, model_id="anthropic.claude-3-sonn
         response (JSON): The conversation that the model generated.
 
     """
-    model_id="us.anthropic.claude-3-7-sonnet-20250219-v1:0"
-    temperature = float(cl.user_session.get("temperature"))
+    thinking_enabled = cl.user_session.get("thinking_enabled")
+    
+    # Get the message history
     message_history = cl.user_session.get("message_history")
     if input_text is None and images is None:
         raise ValueError("input_text or images_path must be provided")
+    
+    # Create content for the new user message
     images_body = None
     if images:
         images_body = create_image_content(images)
@@ -59,21 +62,43 @@ def generate_conversation(bedrock_client=None, model_id="anthropic.claude-3-sonn
         docs_body = create_doc_content(docs)
     new_user_content = create_content(input_text, images_body, docs_body)
     message_history.append({"role": "user", "content": new_user_content})
+    
+    # Log the raw message history being sent to the model
+    logger.debug(f"Raw message history being sent to the model: {message_history}")
 
     # Base inference parameters to use.
-    inference_config = {"temperature": temperature}
+    inference_config = {}
+    
+    # Only set temperature if thinking is not enabled
+    if not thinking_enabled:
+        inference_config["temperature"] = float(cl.user_session.get("temperature"))
+        logger.debug(f"Using temperature: {inference_config['temperature']}")
+    else:
+        logger.debug("Temperature parameter omitted when thinking is enabled")
 
     # Additional inference parameters to use.
     additional_model_fields = {}
+    
+    # Add reasoning capability if enabled
+    if thinking_enabled:
+        # Get the reasoning budget from user settings
+        reasoning_budget = int(cl.user_session.get("reasoning_budget"))
+        additional_model_fields["thinking"] = {
+            "type": "enabled",
+            "budget_tokens": reasoning_budget
+        }
+        logger.debug(f"Thinking enabled with budget: {reasoning_budget} tokens")
+    else:
+        logger.debug("Thinking disabled")
 
     if cl.user_session.get("streaming"):
         try: 
-            return  bedrock_client.converse_stream(
-            modelId=model_id,
-            messages=message_history,
-            system=cl.user_session.get("system_prompt"),
-            inferenceConfig=inference_config,
-            additionalModelRequestFields=additional_model_fields
+            return bedrock_client.converse_stream(
+                modelId=model_id,
+                messages=message_history,
+                system=cl.user_session.get("system_prompt"),
+                inferenceConfig=inference_config,
+                additionalModelRequestFields=additional_model_fields
             )
         except ClientError as err:
             message = err.response["Error"]["Message"]
@@ -84,11 +109,11 @@ def generate_conversation(bedrock_client=None, model_id="anthropic.claude-3-sonn
     else:
         try:
             return bedrock_client.converse(
-            modelId=model_id,
-            messages=message_history,
-            system=cl.user_session.get("system_prompt"),
-            inferenceConfig=inference_config,
-            additionalModelRequestFields=additional_model_fields
+                modelId=model_id,
+                messages=message_history,
+                system=cl.user_session.get("system_prompt"),
+                inferenceConfig=inference_config,
+                additionalModelRequestFields=additional_model_fields
             )
         except ClientError as err:
             message = err.response["Error"]["Message"]
@@ -110,35 +135,58 @@ async def chat_profile():
     return profiles
 
 @cl.on_settings_update
-def set_settings(settings):
-    cl.user_session.set(
-        "streaming",
-        settings["streaming"],
-    )
-    cl.user_session.set(
-        "temperature",
-        settings["temperature"],
-    )
-    cl.user_session.set(
-        "max_tokens",
-        settings["max_tokens"],
-    )
-    cl.user_session.set(
-        "costs",
-        settings["costs"],
-    ),
-    cl.user_session.set(
-        "precision",
-        settings["precision"],
-    )
-    cl.user_session.set(
-        "thinking_enabled",
-        settings["thinking_enabled"],
-    )
-    cl.user_session.set(
-        "system_prompt",
-        [{"text": settings["system_prompt"]}])
-    return
+async def set_settings(settings):
+    # Store basic settings
+    cl.user_session.set("streaming", settings["streaming"])
+    cl.user_session.set("max_tokens", settings["max_tokens"])
+    cl.user_session.set("costs", settings["costs"])
+    cl.user_session.set("precision", settings["precision"])
+    cl.user_session.set("system_prompt", [{"text": settings["system_prompt"]}])
+    
+    # Handle thinking settings if they exist
+    thinking_enabled = settings.get("thinking_enabled", False)
+    cl.user_session.set("thinking_enabled", thinking_enabled)
+    
+    # Always set a default temperature, even if the control is hidden
+    cl.user_session.set("temperature", settings.get("temperature", 1.0))
+    
+    # If thinking is enabled, store reasoning budget and update UI
+    if thinking_enabled and "reasoning_budget" in settings:
+        cl.user_session.set("reasoning_budget", settings["reasoning_budget"])
+        
+        # Show all controls but disable temperature when thinking is enabled
+        await cl.ChatSettings([
+            Switch(id="streaming", label="Streaming", initial=settings["streaming"]),
+            TextInput(id="system_prompt", label="System Prompt", initial=settings["system_prompt"]),
+            Switch(id="thinking_enabled", label="Enable Thinking Process", initial=True),
+            Slider(
+                id="reasoning_budget",
+                label="Reasoning Budget (tokens)",
+                initial=settings["reasoning_budget"],
+                min=1024,
+                max=64000,
+                step=1024,
+            ),
+            Slider(
+                id="temperature",
+                label="Temperature (disabled when thinking is enabled)",
+                initial=1.0,
+                min=0,
+                max=1,
+                step=0.1,
+                disabled=True
+            ),
+            Slider(
+                id="max_tokens",
+                label="Maximum tokens",
+                initial=settings["max_tokens"],
+                min=1,
+                max=64000,
+                step=1024,
+            ),
+            Switch(id="costs", label="Show costs in the answer", initial=settings["costs"]),
+            Slider(id="precision", label="Digit Precision of costs", initial=settings["precision"], min=1, max=10, step=1)
+        ]).send()
 
 @cl.on_chat_start
 async def start():
@@ -188,32 +236,83 @@ async def start():
         "system_prompt",
         [{"text": system_prompt}]
     )
-    settings = await cl.ChatSettings(
-            [
-                Switch(id="streaming", label="Streaming", initial=True),
-                TextInput(id="system_prompt", label="System Prompt", initial=cl.user_session.get("system_prompt")[0]["text"]),
-                Switch(id="thinking_enabled", label="Enable Thinking Process", initial=False),
-                Slider(
-                    id="temperature",
-                    label="Temperature",
-                    initial=1,
-                    min=0,
-                    max=1,
-                    step=0.1,
-                ),
-                Slider(
-                    id="max_tokens",
-                    label="Maximum tokens",
-                    initial=1000,
-                    min=1,
-                    max=4096,
-                    step=1,
-                ),
-                Switch(id="costs", label="Show costs in the answer", initial=False),
-                Slider(id="precision", label="Digit Precision of costs", initial=4, min=1, max=10, step=1)
-            ]
-        ).send()
-    set_settings(settings)
+    
+    # Check if the model supports reasoning
+    reasoning_supported = model_info.get("reasoning", False)
+    
+    # Build settings controls based on model capabilities
+    settings_controls = [
+        Switch(id="streaming", label="Streaming", initial=True)
+    ]
+    
+    # Only add reasoning controls if the model supports it
+    if reasoning_supported:
+        # Set thinking enabled by default for models that support it
+        thinking_enabled = True
+        cl.user_session.set("thinking_enabled", thinking_enabled)
+        
+        settings_controls.append(
+            Switch(id="thinking_enabled", label="Enable Thinking Process", initial=thinking_enabled)
+        )
+        
+        # Add reasoning budget
+        settings_controls.append(
+            Slider(
+                id="reasoning_budget",
+                label="Reasoning Budget (tokens)",
+                initial=4096,
+                min=1024,
+                max=64000,
+                step=1024,
+            )
+        )
+        
+        # Add temperature control (disabled when thinking is enabled)
+        settings_controls.append(
+            Slider(
+                id="temperature",
+                label="Temperature (disabled when thinking is enabled)",
+                initial=1.0,
+                min=0,
+                max=1,
+                step=0.1,
+                disabled=thinking_enabled
+            )
+        )
+    else:
+        # Set default values for reasoning settings even if not shown
+        cl.user_session.set("thinking_enabled", False)
+        cl.user_session.set("reasoning_budget", 4096)
+        
+        # Always show temperature for models without reasoning
+        settings_controls.append(
+            Slider(
+                id="temperature",
+                label="Temperature",
+                initial=1,
+                min=0,
+                max=1,
+                step=0.1,
+            )
+        )
+    
+    # Add remaining controls
+    settings_controls.extend([
+        Slider(
+            id="max_tokens",
+            label="Maximum tokens",
+            initial=4096,
+            min=1,
+            max=64000,
+            step=1024,
+        ),
+        TextInput(id="system_prompt", label="System Prompt", initial=cl.user_session.get("system_prompt")[0]["text"]),
+        Switch(id="costs", label="Show costs in the answer", initial=False),
+        Slider(id="precision", label="Digit Precision of costs", initial=4, min=1, max=10, step=1)
+    ])
+    
+    settings = await cl.ChatSettings(settings_controls).send()
+    await set_settings(settings)
 
 @cl.on_message
 async def main(message: cl.Message):
@@ -257,52 +356,204 @@ async def main(message: cl.Message):
         if cl.user_session.get("streaming"):
             stream = response.get('stream')
             if stream:
+                # For tracking thinking content
+                thinking_enabled = cl.user_session.get("thinking_enabled")
+                thinking_manager = ThinkingBlockManager() if thinking_enabled else None
+                thinking_step = None
+                
                 for event in stream:
                     if 'messageStart' in event:
-                        logger.info(f"\nRole: {event['messageStart']['role']}")
+                        logger.debug(f"\nRole: {event['messageStart']['role']}")
 
                     if 'contentBlockDelta' in event:
-                        logger.info(event['contentBlockDelta']['delta']['text'])
-                        await msg.stream_token(event['contentBlockDelta']['delta']['text'])
+                        delta = event['contentBlockDelta'].get('delta', {})
+                        
+                        # Handle regular text content
+                        if 'text' in delta:
+                            logger.debug(delta['text'])
+                            await msg.stream_token(delta['text'])
+                        
+                        # Handle reasoning content (thinking) if enabled
+                        if thinking_enabled:
+                            # Handle thinking text
+                            # Handle thinking text and signature
+                            if 'reasoningContent' in delta:
+                                # Handle thinking text
+                                if 'text' in delta['reasoningContent']:
+                                    thinking_text = delta['reasoningContent']['text']
+                                    thinking_manager.add_thinking(thinking_text)
+                                    
+                                    # Create or update thinking step
+                                    if not thinking_step:
+                                        thinking_step = cl.Step(
+                                            name="Thinking 🤔",
+                                            type="thinking"
+                                        )
+                                        await thinking_step.send()
+                                    
+                                    # Stream thinking content to the step
+                                    await thinking_step.stream_token(thinking_text)
+                                    logger.debug(f"Thinking: {thinking_text}")
+                                
+                                # Handle signature directly from reasoningContent
+                                if 'signature' in delta['reasoningContent']:
+                                    signature = delta['reasoningContent']['signature']
+                                    thinking_manager.set_signature(signature)
+                                    logger.debug(f"Received thinking signature: {signature[:20]}...")
+                            
+                            # Handle redacted thinking
+                            if 'redactedReasoningContent' in delta and 'data' in delta['redactedReasoningContent']:
+                                redacted_data = delta['redactedReasoningContent']['data']
+                                thinking_manager.add_redacted(redacted_data)
+                                
+                                # Create or update thinking step
+                                if not thinking_step:
+                                    thinking_step = cl.Step(
+                                        name="Thinking 🤔",
+                                        type="thinking"
+                                    )
+                                    await thinking_step.send()
+                                
+                                await thinking_step.stream_token("\n[Redacted thinking content]")
+                                logger.debug("Received redacted thinking content")
 
                     if 'messageStop' in event:
-                        logger.info(f"\nStop reason: {event['messageStop']['stopReason']}")
+                        logger.debug(f"\nStop reason: {event['messageStop']['stopReason']}")
+                        
+                        # Complete thinking step if it exists
+                        if thinking_step:
+                            await thinking_step.update()
 
                     if 'metadata' in event:
                         metadata = event['metadata']
                         if 'usage' in metadata:
-                            logger.info("\nToken usage")
-                            logger.info(f"Input tokens: {metadata['usage']['inputTokens']}")
-                            logger.info(
+                            logger.debug("\nToken usage")
+                            logger.debug(f"Input tokens: {metadata['usage']['inputTokens']}")
+                            logger.debug(
                                 f":Output tokens: {metadata['usage']['outputTokens']}")
-                            logger.info(f":Total tokens: {metadata['usage']['totalTokens']}")
+                            logger.debug(f":Total tokens: {metadata['usage']['totalTokens']}")
                             api_usage = {"inputTokenCount": metadata['usage']['inputTokens'],
                                         "outputTokenCount": metadata['usage']['outputTokens'],
                                         "invocationLatency": "not available in this API call",
                                         "firstByteLatency": "not available in this API call"}
                         if 'metrics' in event['metadata']:
-                            logger.info(
+                            logger.debug(
                                 f"Latency: {metadata['metrics']['latencyMs']} milliseconds")
                             api_usage["invocationLatency"] = metadata['metrics']['latencyMs']
-                message_history.append({"role": "assistant", "content": [{"text": msg.content}]})
+                
+                # Create the assistant message with properly formatted thinking blocks for API
+                if thinking_enabled and thinking_manager.has_thinking():
+                    # Get thinking blocks formatted for API
+                    api_blocks = thinking_manager.get_api_blocks()
+                    
+                    # Add to message history with properly formatted thinking blocks
+                    message_history.append({
+                        "role": "assistant", 
+                        "content": [{"text": msg.content}] + api_blocks
+                    })
+                    
+                    # Log what we're storing in message history
+                    logger.debug(f"Stored assistant message with {len(api_blocks)} thinking blocks in message history")
+                else:
+                    # Add to message history without thinking blocks
+                    message_history.append({
+                        "role": "assistant", 
+                        "content": [{"text": msg.content}]
+                    })
         else:
+            # Handle non-streaming response
+            response = generate_conversation(cl.user_session.get("bedrock_runtime"), model_info["id"], message.content, max_tokens, images, docs)
+            
+            # Get thinking enabled status
+            thinking_enabled = cl.user_session.get("thinking_enabled")
+            
+            # Process the response
             text = ""
-            for t in response['output']['message']["content"]:
-                text += t["text"]
+            thinking_manager = ThinkingBlockManager() if thinking_enabled else None
+            
+            # Extract content from the response
+            for content_item in response['output']['message']["content"]:
+                # Handle text content
+                if 'text' in content_item:
+                    text += content_item['text']
+                
+                # Handle thinking content in non-streaming mode
+                elif thinking_enabled and 'reasoningContent' in content_item:
+                    if 'reasoningText' in content_item['reasoningContent']:
+                        thinking_text = content_item['reasoningContent']['reasoningText']['text']
+                        thinking_signature = content_item['reasoningContent']['reasoningText'].get('signature')
+                        
+                        # Add to thinking manager
+                        thinking_manager.add_thinking(thinking_text)
+                        if thinking_signature:
+                            thinking_manager.set_signature(thinking_signature)
+                            logger.debug(f"Received thinking signature (non-streaming): {thinking_signature[:20]}...")
+                        
+                        # Create a thinking step to display in UI
+                        thinking_step = cl.Step(
+                            name="Thinking Process",
+                            type="thinking"
+                        )
+                        await thinking_step.send()
+                        await thinking_step.stream_token(thinking_text)
+                        await thinking_step.update()
+                        
+                        logger.debug(f"Extracted thinking content (non-streaming): {thinking_text[:100]}...")
+                
+                # Handle redacted thinking content
+                elif thinking_enabled and 'redactedReasoningContent' in content_item:
+                    redacted_data = content_item['redactedReasoningContent']['data']
+                    thinking_manager.add_redacted(redacted_data)
+                    
+                    # Create a thinking step for redacted content
+                    thinking_step = cl.Step(
+                        name="Thinking Process (Redacted)",
+                        type="thinking"
+                    )
+                    await thinking_step.send()
+                    await thinking_step.stream_token("[Redacted thinking content]")
+                    await thinking_step.update()
+                    
+                    logger.debug("Extracted redacted thinking content (non-streaming)")
+            
+            # Update the message content
             msg.content = text
-            message_history.append(response['output']['message'])
-            api_usage = {"inputTokenCount": response["usage"]["inputTokens"],
-                         "outputTokenCount": response["usage"]["outputTokens"],
-                         "invocationLatency": response['metrics']['latencyMs'],
-                         "firstByteLatency": "not available in this API call"}
+            
+            # Add to message history with properly formatted thinking blocks for API
+            if thinking_enabled and thinking_manager and thinking_manager.has_thinking():
+                # Get thinking blocks formatted for API
+                api_blocks = thinking_manager.get_api_blocks()
+                
+                # Add to message history with properly formatted thinking blocks
+                message_history.append({
+                    "role": "assistant",
+                    "content": [{"text": text}] + api_blocks
+                })
+                
+                logger.debug(f"Stored assistant message with {len(api_blocks)} thinking blocks in message history (non-streaming)")
+            else:
+                # Add to message history without thinking blocks
+                message_history.append({
+                    "role": "assistant",
+                    "content": [{"text": text}]
+                })
+            
+            # Extract usage information
+            api_usage = {
+                "inputTokenCount": response["usage"]["inputTokens"],
+                "outputTokenCount": response["usage"]["outputTokens"],
+                "invocationLatency": response['metrics']['latencyMs'],
+                "firstByteLatency": "not available in this API call"
+            }
+            
         if api_usage: 
             invocation_cost = api_usage["inputTokenCount"]/1000 * model_info["cost"]["input_1k_price"] + api_usage["outputTokenCount"]/1000 * model_info["cost"]["output_1k_price"]
             total_cost = cl.user_session.get("total_cost") + invocation_cost
             cl.user_session.set("total_cost", total_cost)
-            logger.info(f"Invocation cost: {invocation_cost}")
-            logger.info(f"Total chat cost: {total_cost}")
+            logger.debug(f"Invocation cost: {invocation_cost}")
+            logger.debug(f"Total chat cost: {total_cost}")
         else:
-            logger.info(f"api usage not defined")
+            logger.debug(f"api usage not defined")
 
         if cl.user_session.get("costs"):
             precision = cl.user_session.get("precision")  # You can change this value to adjust the precision
