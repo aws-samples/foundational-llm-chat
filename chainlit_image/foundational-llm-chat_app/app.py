@@ -95,26 +95,26 @@ async def generate_conversation(bedrock_client=None, model_id=None, input_text=N
     # Create content for the new user message
     images_body = []
     if images:
-        logger.info(f"Creating image content for {len(images)} images")
+        logger.debug(f"Creating image content for {len(images)} images")
         images_body = create_image_content(images)
-        logger.info(f"Created image content: {images_body}")
+        logger.debug(f"Created image content: {images_body}")
         
     docs_body = []
     if docs:
-        logger.info(f"Creating document content for {len(docs)} documents")
+        logger.debug(f"Creating document content for {len(docs)} documents")
         docs_body = create_doc_content(docs)
-        logger.info(f"Created document content: {docs_body}")
+        logger.debug(f"Created document content: {docs_body}")
     
     # Create the user message content using the create_content function
     new_user_content = create_content(input_text, images_body, docs_body)
-    logger.info(f"Final message content: {new_user_content}")
+    logger.debug(f"Final message content: {new_user_content}")
     
     # For non-streaming mode with documents, just use the current message
     # This follows AWS example for document handling
     if not cl.user_session.get("streaming") and (docs or images):
         # Create a single message with the document content
         api_message_history = [{"role": "user", "content": new_user_content}]
-        logger.info("Using single message approach for non-streaming document request (AWS recommended pattern)")
+        logger.debug("Using single message approach for non-streaming document request (AWS recommended pattern)")
     else:
         # For streaming or text-only messages, use the full conversation history
         api_message_history = message_history.copy()
@@ -125,7 +125,7 @@ async def generate_conversation(bedrock_client=None, model_id=None, input_text=N
     message_history.append({"role": "user", "content": new_user_content})
     
     # Log the raw message history being sent to the model
-    logger.info(f"Raw message history being sent to the model: {api_message_history}")
+    logger.debug(f"Raw message history being sent to the model: {api_message_history}")
 
     # Base inference parameters to use.
     inference_config = {
@@ -135,9 +135,9 @@ async def generate_conversation(bedrock_client=None, model_id=None, input_text=N
     # Only set temperature if thinking is not enabled
     if not thinking_enabled:
         inference_config["temperature"] = float(cl.user_session.get("temperature"))
-        logger.info(f"Using temperature: {inference_config['temperature']}")
+        logger.debug(f"Using temperature: {inference_config['temperature']}")
     else:
-        logger.info("Temperature parameter omitted when thinking is enabled")
+        logger.debug("Temperature parameter omitted when thinking is enabled")
 
     # Additional inference parameters to use.
     additional_model_fields = {}
@@ -150,11 +150,11 @@ async def generate_conversation(bedrock_client=None, model_id=None, input_text=N
             "type": "enabled",
             "budget_tokens": reasoning_budget
         }
-        logger.info(f"Thinking enabled with budget: {reasoning_budget} tokens")
+        logger.debug(f"Thinking enabled with budget: {reasoning_budget} tokens")
     else:
-        logger.info("Thinking disabled")
+        logger.debug("Thinking disabled")
         
-    logger.info(
+    logger.debug(
         "Bedrock request payload:\n"
         "Model ID: %s\n"
         "Messages: %s\n"
@@ -318,13 +318,13 @@ async def start():
             # Use the extract_and_process_prompt function to handle the prompt structure
             system_prompt = extract_and_process_prompt(system_prompt_object)
             if system_prompt:
-                logger.info(f"Loaded system prompt for {chat_profile}: {system_prompt[:50]}...")
+                logger.debug(f"Loaded system prompt for {chat_profile}: {system_prompt[:50]}...")
             else:
                 logger.warning(f"Failed to extract system prompt for {chat_profile}")
         except Exception as e:
             logger.error(f"Error getting system prompt: {e}")
     else:
-        logger.info(f"No system prompt defined for {chat_profile}")
+        logger.debug(f"No system prompt defined for {chat_profile}")
         
     cl.user_session.set(
         "system_prompt",
@@ -425,17 +425,17 @@ async def main(message: cl.Message):
     # Debug message elements
     if hasattr(message, "elements") and message.elements:
         for i, element in enumerate(message.elements):
-            logger.info(f"Element {i}: type={element.type}, name={getattr(element, 'name', 'N/A')}")
+            logger.debug(f"Element {i}: type={element.type}, name={getattr(element, 'name', 'N/A')}")
             if hasattr(element, "mime"):
-                logger.info(f"Element {i} mime type: {element.mime}")
+                logger.debug(f"Element {i} mime type: {element.mime}")
             if hasattr(element, "path"):
-                logger.info(f"Element {i} path: {element.path}")
+                logger.debug(f"Element {i} path: {element.path}")
     
     # Process message contents
     images, docs, other_files = content_service.split_message_contents(message, model_info["id"])
     
     # Debug the processed contents
-    logger.info(f"Processed contents: images={images}, docs={docs}, other_files={other_files}")
+    logger.debug(f"Processed contents: images={images}, docs={docs}, other_files={other_files}")
     
     # Store content for later cleanup
     cl.user_session.set(
@@ -464,7 +464,7 @@ async def main(message: cl.Message):
         return
     
     # Log what we're sending to the model
-    logger.info(f"Sending to model: text={message.content}, images={len(images)}, docs={len(docs)}")
+    logger.debug(f"Sending to model: text={message.content}, images={len(images)}, docs={len(docs)}")
     
     api_usage = None
     try:
@@ -479,14 +479,14 @@ async def main(message: cl.Message):
                 
                 for event in stream:
                     if 'messageStart' in event:
-                        logger.info(f"\nRole: {event['messageStart']['role']}")
+                        logger.debug(f"\nRole: {event['messageStart']['role']}")
 
                     if 'contentBlockDelta' in event:
                         delta = event['contentBlockDelta'].get('delta', {})
                         
                         # Handle regular text content
                         if 'text' in delta:
-                            logger.info(delta['text'])
+                            logger.debug(delta['text'])
                             await msg.stream_token(delta['text'])
                         
                         # Handle reasoning content (thinking) if enabled
@@ -510,13 +510,13 @@ async def main(message: cl.Message):
                                     # For Chainlit 2.4.0, use the direct streaming approach
                                     # This is the most efficient way to stream tokens
                                     await thinking_step.stream_token(thinking_text)
-                                    logger.info(f"Thinking: {thinking_text}")
+                                    logger.debug(f"Thinking: {thinking_text}")
                                 
                                 # Handle signature directly from reasoningContent
                                 if 'signature' in delta['reasoningContent']:
                                     signature = delta['reasoningContent']['signature']
                                     thinking_manager.set_signature(signature)
-                                    logger.info(f"Received thinking signature: {signature[:20]}...")
+                                    logger.debug(f"Received thinking signature: {signature[:20]}...")
                             
                             # Handle redacted thinking
                             if 'redactedReasoningContent' in delta and 'data' in delta['redactedReasoningContent']:
@@ -532,10 +532,10 @@ async def main(message: cl.Message):
                                     await thinking_step.send()
                                 
                                 await thinking_step.stream_token("\n[Redacted thinking content]")
-                                logger.info("Received redacted thinking content")
+                                logger.debug("Received redacted thinking content")
 
                     if 'messageStop' in event:
-                        logger.info(f"\nStop reason: {event['messageStop']['stopReason']}")
+                        logger.debug(f"\nStop reason: {event['messageStop']['stopReason']}")
                         
                         # Complete thinking step if it exists
                         if thinking_step:
@@ -544,17 +544,17 @@ async def main(message: cl.Message):
                     if 'metadata' in event:
                         metadata = event['metadata']
                         if 'usage' in metadata:
-                            logger.info("\nToken usage")
-                            logger.info(f"Input tokens: {metadata['usage']['inputTokens']}")
-                            logger.info(
+                            logger.debug("\nToken usage")
+                            logger.debug(f"Input tokens: {metadata['usage']['inputTokens']}")
+                            logger.debug(
                                 f":Output tokens: {metadata['usage']['outputTokens']}")
-                            logger.info(f":Total tokens: {metadata['usage']['totalTokens']}")
+                            logger.debug(f":Total tokens: {metadata['usage']['totalTokens']}")
                             api_usage = {"inputTokenCount": metadata['usage']['inputTokens'],
                                         "outputTokenCount": metadata['usage']['outputTokens'],
                                         "invocationLatency": "not available in this API call",
                                         "firstByteLatency": "not available in this API call"}
                         if 'metrics' in event['metadata']:
-                            logger.info(
+                            logger.debug(
                                 f"Latency: {metadata['metrics']['latencyMs']} milliseconds")
                             api_usage["invocationLatency"] = metadata['metrics']['latencyMs']
                 
@@ -573,7 +573,7 @@ async def main(message: cl.Message):
                     })
                     
                     # Log what we're storing in message history
-                    logger.info(f"Stored assistant message with {len(api_blocks)} thinking blocks in message history")
+                    logger.debug(f"Stored assistant message with {len(api_blocks)} thinking blocks in message history")
                 else:
                     # Add to message history without thinking blocks
                     message_history.append({
@@ -581,7 +581,7 @@ async def main(message: cl.Message):
                         "content": [{"text": msg.content}]
                     })
         else:
-            
+
             # Get thinking enabled status
             thinking_enabled = cl.user_session.get("thinking_enabled")
             
@@ -618,7 +618,7 @@ async def main(message: cl.Message):
                         thinking_manager.add_thinking(thinking_text)
                         if thinking_signature:
                             thinking_manager.set_signature(thinking_signature)
-                            logger.info(f"Received thinking signature (non-streaming): {thinking_signature[:20]}...")
+                            logger.debug(f"Received thinking signature (non-streaming): {thinking_signature[:20]}...")
                         
                         # Create a thinking step to display in UI
                         thinking_step = cl.Step(
@@ -629,7 +629,7 @@ async def main(message: cl.Message):
                         await thinking_step.stream_token(thinking_text)
                         await thinking_step.update()
                         
-                        logger.info(f"Extracted thinking content (non-streaming): {thinking_text[:100]}...")
+                        logger.debug(f"Extracted thinking content (non-streaming): {thinking_text[:100]}...")
                 
                 # Handle redacted thinking content
                 elif thinking_enabled and 'redactedReasoningContent' in content_item:
@@ -645,7 +645,7 @@ async def main(message: cl.Message):
                     await thinking_step.stream_token("[Redacted thinking content]")
                     await thinking_step.update()
                     
-                    logger.info("Extracted redacted thinking content (non-streaming)")
+                    logger.debug("Extracted redacted thinking content (non-streaming)")
             
             # Update the message content
             msg.content = text
@@ -664,7 +664,7 @@ async def main(message: cl.Message):
                     "content": [{"text": text}] + api_blocks
                 })
                 
-                logger.info(f"Stored assistant message with {len(api_blocks)} thinking blocks in message history (non-streaming)")
+                logger.debug(f"Stored assistant message with {len(api_blocks)} thinking blocks in message history (non-streaming)")
             else:
                 # Add to message history without thinking blocks
                 message_history.append({
@@ -684,10 +684,10 @@ async def main(message: cl.Message):
             invocation_cost = api_usage["inputTokenCount"]/1000 * model_info["cost"]["input_1k_price"] + api_usage["outputTokenCount"]/1000 * model_info["cost"]["output_1k_price"]
             total_cost = cl.user_session.get("total_cost") + invocation_cost
             cl.user_session.set("total_cost", total_cost)
-            logger.info(f"Invocation cost: {invocation_cost}")
-            logger.info(f"Total chat cost: {total_cost}")
+            logger.debug(f"Invocation cost: {invocation_cost}")
+            logger.debug(f"Total chat cost: {total_cost}")
         else:
-            logger.info(f"api usage not defined")
+            logger.debug(f"api usage not defined")
 
         if cl.user_session.get("costs"):
             precision = cl.user_session.get("precision")  # You can change this value to adjust the precision

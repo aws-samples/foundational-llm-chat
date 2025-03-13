@@ -30,4 +30,3 @@ ENV PATH="/home/chainlitworker/.local/bin:${PATH}"
 EXPOSE 8080
 
 CMD ["python", "-m", "chainlit", "run", "app.py", "--host", "0.0.0.0", "--port", "8080"]
-
