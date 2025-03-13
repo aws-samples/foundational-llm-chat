@@ -4,6 +4,16 @@
 
 Data Persistance using DynamoDB. Waiting for this issue: https://github.com/Chainlit/chainlit/issues/1172
 
+## [1.3.0] - 2025-03-13
+
+### Added
+- Added Claude 3.7
+- Added a way to operate with thinking models
+
+### Changed
+- Upgraded the codebase to chainlit 2.0
+- Upgraded dependencies to latest version
+
 ## [1.2.1] - 2024-12-17
 
 ### Added
