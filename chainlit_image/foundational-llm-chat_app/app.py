@@ -1,21 +1,55 @@
+"""
+Main application for Foundational LLM Chat.
+"""
 import chainlit as cl
-from typing import Dict, Optional
+from typing import Dict, List, Any, Optional
 import boto3
 from botocore.config import Config
-from chainlit.input_widget import Switch, Slider, TextInput
 from botocore.exceptions import ClientError
+from chainlit.input_widget import Switch, Slider, TextInput
+import sys
+import os
+import logging
+
+# Add the current directory to the Python path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+# Import system strings
 from system_strings import suported_file_string
-from config import my_aws_config as my_config, system_prompt_list, bedrock_models, DYNAMODB_DATA_LAYER_NAME, S3_DATA_LAYER_NAME
-from content_management_utils import logger, verify_content, split_message_contents, delete_contents
-from massages_utils import create_content, create_image_content, create_doc_content, extract_and_process_prompt
-from thinking_manager import ThinkingBlockManager
 
+# Import configuration
+from config.app_config import AppConfig
 
-# TODO: add data persistance when fixed by chainlit
-# import chainlit.data as cl_data
-# from chainlit.data.dynamodb import DynamoDBDataLayer
-# from chainlit.data.storage_clients import S3StorageClient
-# from chainlit.types import ThreadDict
+# Import services
+from services.thinking_service import ThinkingService
+from services.content_service import ContentService
+
+# Import utilities
+from utils.message_utils import (
+    create_content, create_image_content, create_doc_content, 
+    extract_and_process_prompt
+)
+
+# Configure logging
+import logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)
+
+# Load configuration
+aws_config = AppConfig.load_aws_config()
+system_prompt_list = AppConfig.load_system_prompts()
+content_limits = AppConfig.load_content_limits()
+data_layer_config = AppConfig.load_data_layer_config()
+bedrock_models = AppConfig.load_bedrock_models()
+
+# Initialize services
+content_service = ContentService(
+    max_chars=content_limits["max_chars"],
+    max_size_mb=content_limits["max_content_size_mb"]
+)
+
+# Define supported file string
+suported_file_string = "Supported file types: JPEG, PNG, GIF, WEBP, PDF, CSV, XLSX, XLS, DOCX, DOC, TXT, HTML, MD"
 
 @cl.oauth_callback
 def oauth_callback(
@@ -26,45 +60,72 @@ def oauth_callback(
 ) -> Optional[cl.User]:
     return default_user
 
-# TODO: add data persistance when fixed by chainlit
+# TODO: add data persistence when fixed by chainlit
 # import chainlit.data as cl_data
 # from chainlit.data.dynamodb import DynamoDBDataLayer
 # from chainlit.data.storage_clients import S3StorageClient
-# if(S3_DATA_LAYER_NAME and DYNAMODB_DATA_LAYER_NAME):
-#     storage_client = S3StorageClient(bucket=S3_DATA_LAYER_NAME)
-#     cl_data._data_layer = DynamoDBDataLayer(table_name=DYNAMODB_DATA_LAYER_NAME, storage_provider=storage_client)
+# if(data_layer_config["s3_bucket"] and data_layer_config["dynamodb_table"]):
+#     storage_client = S3StorageClient(bucket=data_layer_config["s3_bucket"])
+#     cl_data._data_layer = DynamoDBDataLayer(
+#         table_name=data_layer_config["dynamodb_table"], 
+#         storage_provider=storage_client
+#     )
 
-def generate_conversation(bedrock_client=None, model_id="us.anthropic.claude-3-7-sonnet-20250219-v1:0", input_text=None, max_tokens=1000, images=None, docs=None):
+async def generate_conversation(bedrock_client=None, model_id=None, input_text=None, max_tokens=1000, images=None, docs=None):
     """
     Sends messages to a model.
     Args:
         bedrock_client: The Boto3 Bedrock runtime client.
         model_id (str): The model ID to use.
-        messages (JSON) : The messages to send to the model.
+        input_text (str): The text input.
+        max_tokens (int): Maximum tokens to generate.
+        images (list): List of images to include.
+        docs (list): List of documents to include.
 
     Returns:
         response (JSON): The conversation that the model generated.
-
     """
     thinking_enabled = cl.user_session.get("thinking_enabled")
     
     # Get the message history
     message_history = cl.user_session.get("message_history")
-    if input_text is None and images is None:
-        raise ValueError("input_text or images_path must be provided")
+    if input_text is None and not images and not docs:
+        raise ValueError("input_text, images, or docs must be provided")
     
     # Create content for the new user message
-    images_body = None
+    images_body = []
     if images:
+        logger.info(f"Creating image content for {len(images)} images")
         images_body = create_image_content(images)
-    docs_body = None
+        logger.info(f"Created image content: {images_body}")
+        
+    docs_body = []
     if docs:
+        logger.info(f"Creating document content for {len(docs)} documents")
         docs_body = create_doc_content(docs)
+        logger.info(f"Created document content: {docs_body}")
+    
+    # Create the user message content using the create_content function
     new_user_content = create_content(input_text, images_body, docs_body)
+    logger.info(f"Final message content: {new_user_content}")
+    
+    # For non-streaming mode with documents, just use the current message
+    # This follows AWS example for document handling
+    if not cl.user_session.get("streaming") and (docs or images):
+        # Create a single message with the document content
+        api_message_history = [{"role": "user", "content": new_user_content}]
+        logger.info("Using single message approach for non-streaming document request (AWS recommended pattern)")
+    else:
+        # For streaming or text-only messages, use the full conversation history
+        api_message_history = message_history.copy()
+        api_message_history.append({"role": "user", "content": new_user_content})
+    
+    # Add the new user message to the session history
+    # IMPORTANT: This is the only place where we update the message history
     message_history.append({"role": "user", "content": new_user_content})
     
     # Log the raw message history being sent to the model
-    logger.debug(f"Raw message history being sent to the model: {message_history}")
+    logger.info(f"Raw message history being sent to the model: {api_message_history}")
 
     # Base inference parameters to use.
     inference_config = {
@@ -74,9 +135,9 @@ def generate_conversation(bedrock_client=None, model_id="us.anthropic.claude-3-7
     # Only set temperature if thinking is not enabled
     if not thinking_enabled:
         inference_config["temperature"] = float(cl.user_session.get("temperature"))
-        logger.debug(f"Using temperature: {inference_config['temperature']}")
+        logger.info(f"Using temperature: {inference_config['temperature']}")
     else:
-        logger.debug("Temperature parameter omitted when thinking is enabled")
+        logger.info("Temperature parameter omitted when thinking is enabled")
 
     # Additional inference parameters to use.
     additional_model_fields = {}
@@ -89,11 +150,11 @@ def generate_conversation(bedrock_client=None, model_id="us.anthropic.claude-3-7
             "type": "enabled",
             "budget_tokens": reasoning_budget
         }
-        logger.debug(f"Thinking enabled with budget: {reasoning_budget} tokens")
+        logger.info(f"Thinking enabled with budget: {reasoning_budget} tokens")
     else:
-        logger.debug("Thinking disabled")
-
-    logger.debug(
+        logger.info("Thinking disabled")
+        
+    logger.info(
         "Bedrock request payload:\n"
         "Model ID: %s\n"
         "Messages: %s\n"
@@ -101,16 +162,17 @@ def generate_conversation(bedrock_client=None, model_id="us.anthropic.claude-3-7
         "Inference Config: %s\n"
         "Additional Model Fields: %s",
         model_id,
-        message_history,
+        api_message_history,
         cl.user_session.get("system_prompt"),
         inference_config,
         additional_model_fields
     )
+    
     if cl.user_session.get("streaming"):
         try: 
             return bedrock_client.converse_stream(
                 modelId=model_id,
-                messages=message_history,
+                messages=api_message_history,
                 system=cl.user_session.get("system_prompt"),
                 inferenceConfig=inference_config,
                 additionalModelRequestFields=additional_model_fields
@@ -120,12 +182,11 @@ def generate_conversation(bedrock_client=None, model_id="us.anthropic.claude-3-7
             logger.error("A client error occurred: %s", message)
             print("A client error occured: " +
                 format(message))
-
     else:
         try:
             return bedrock_client.converse(
                 modelId=model_id,
-                messages=message_history,
+                messages=api_message_history,
                 system=cl.user_session.get("system_prompt"),
                 inferenceConfig=inference_config,
                 additionalModelRequestFields=additional_model_fields
@@ -223,8 +284,12 @@ async def start():
         "directory_paths",
         set([])
     )
+    
+    # Store bedrock models for later use
+    cl.user_session.set("bedrock_models", bedrock_models)
+    
     try:
-        bedrock_client_config = Config(**my_config)
+        bedrock_client_config = Config(**aws_config)
         if "region" in model_info:
             if len(model_info["region"]) > 1:
                 bedrock_client_config.region_name = model_info["inference_profile"]["region"]
@@ -236,17 +301,31 @@ async def start():
         logger.error("A client error occurred: %s", message)
         print("A client error occured: " +
               format(message))
-    try:
-        bedrock_agent_client_config = Config(**my_config)
-        cl.user_session.set("bedrock_agent_runtime", boto3.client('bedrock-agent', config=bedrock_agent_client_config))
-        system_prompt_object = cl.user_session.get("bedrock_agent_runtime").get_prompt(promptIdentifier=system_prompt_list[chat_profile].get("id"), promptVersion=system_prompt_list[chat_profile].get("version"))
-        system_prompt = extract_and_process_prompt(system_prompt_object)
-    except ClientError as err:
-        system_prompt = ""
-        message = err.response["Error"]["Message"]
-        logger.error("A client error occurred: %s", message)
-        print("A client error occured: " +
-              format(message))
+    # Initialize system prompt
+    system_prompt = ""
+    
+    # Try to get system prompt if available
+    if chat_profile in system_prompt_list:
+        try:
+            bedrock_agent_client_config = Config(**aws_config)
+            bedrock_agent_client = boto3.client('bedrock-agent', config=bedrock_agent_client_config)
+            
+            system_prompt_object = bedrock_agent_client.get_prompt(
+                promptIdentifier=system_prompt_list[chat_profile].get("id"),
+                promptVersion=system_prompt_list[chat_profile].get("version")
+            )
+            
+            # Use the extract_and_process_prompt function to handle the prompt structure
+            system_prompt = extract_and_process_prompt(system_prompt_object)
+            if system_prompt:
+                logger.info(f"Loaded system prompt for {chat_profile}: {system_prompt[:50]}...")
+            else:
+                logger.warning(f"Failed to extract system prompt for {chat_profile}")
+        except Exception as e:
+            logger.error(f"Error getting system prompt: {e}")
+    else:
+        logger.info(f"No system prompt defined for {chat_profile}")
+        
     cl.user_session.set(
         "system_prompt",
         [{"text": system_prompt}]
@@ -333,10 +412,8 @@ async def start():
 
 @cl.on_message
 async def main(message: cl.Message):
-    # Your custom logic goes here...
-    # Send a response back to the user
     """
-    Entrypoint for Anthropic Claude Sonnet multimodal prompt example.
+    Entrypoint for handling user messages.
     """
     msg = cl.Message(content="")
     await msg.send()  # loading
@@ -344,18 +421,32 @@ async def main(message: cl.Message):
     chat_profile = cl.user_session.get("chat_profile")
     model_info = bedrock_models[chat_profile]
     max_tokens = int(cl.user_session.get("max_tokens"))
-    message_history = cl.user_session.get("message_history")
-    images, docs, other_files = split_message_contents(message, model_info["id"])
+    
+    # Debug message elements
+    if hasattr(message, "elements") and message.elements:
+        for i, element in enumerate(message.elements):
+            logger.info(f"Element {i}: type={element.type}, name={getattr(element, 'name', 'N/A')}")
+            if hasattr(element, "mime"):
+                logger.info(f"Element {i} mime type: {element.mime}")
+            if hasattr(element, "path"):
+                logger.info(f"Element {i} path: {element.path}")
+    
+    # Process message contents
+    images, docs, other_files = content_service.split_message_contents(message, model_info["id"])
+    
+    # Debug the processed contents
+    logger.info(f"Processed contents: images={images}, docs={docs}, other_files={other_files}")
+    
+    # Store content for later cleanup
     cl.user_session.set(
         "message_contents",
         images+docs
     )
-    # check if images are true images
-    # check dimension of image of each image and discard
-    message_info = None
+    
+    # Handle unsupported files
     if len(other_files) > 0:
         name_string = ", ".join([other["name"] for other in other_files])
-        message_info = f"The files {name_string} is not supported by the model you are using: {model_info}. Not considering it"
+        message_info = f"The files {name_string} is not supported by the model you are using: {model_info['id']}. Not considering it"
         elements = [
                 cl.Text(name="Warning", content=message_info, display="inline"),
             ]
@@ -363,31 +454,39 @@ async def main(message: cl.Message):
         content="",
         elements=elements,
         ).send()
-        delete_contents(other_files)
-    if not verify_content(message.content, images, docs):
+        content_service.delete_contents(other_files)
+    
+    # Verify content is valid
+    if not content_service.verify_content(message.content, images, docs):
         await cl.Message(content=f"Please provide a valid document or image or text. {suported_file_string}").send()
-        delete_contents(images+docs)
+        content_service.delete_contents(images+docs)
+        await msg.update()
+        return
+    
+    # Log what we're sending to the model
+    logger.info(f"Sending to model: text={message.content}, images={len(images)}, docs={len(docs)}")
+    
     api_usage = None
     try:
-        response = generate_conversation(cl.user_session.get("bedrock_runtime"), model_info["id"], message.content, max_tokens, images, docs)
+        response = await generate_conversation(cl.user_session.get("bedrock_runtime"), model_info["id"], message.content, max_tokens, images, docs)
         if cl.user_session.get("streaming"):
             stream = response.get('stream')
             if stream:
                 # For tracking thinking content
                 thinking_enabled = cl.user_session.get("thinking_enabled")
-                thinking_manager = ThinkingBlockManager() if thinking_enabled else None
+                thinking_manager = ThinkingService() if thinking_enabled else None
                 thinking_step = None
                 
                 for event in stream:
                     if 'messageStart' in event:
-                        logger.debug(f"\nRole: {event['messageStart']['role']}")
+                        logger.info(f"\nRole: {event['messageStart']['role']}")
 
                     if 'contentBlockDelta' in event:
                         delta = event['contentBlockDelta'].get('delta', {})
                         
                         # Handle regular text content
                         if 'text' in delta:
-                            logger.debug(delta['text'])
+                            logger.info(delta['text'])
                             await msg.stream_token(delta['text'])
                         
                         # Handle reasoning content (thinking) if enabled
@@ -400,7 +499,7 @@ async def main(message: cl.Message):
                                     thinking_text = delta['reasoningContent']['text']
                                     thinking_manager.add_thinking(thinking_text)
                                     
-                                    # Create or update thinking step
+                                    # Create thinking step if it doesn't exist
                                     if not thinking_step:
                                         thinking_step = cl.Step(
                                             name="Thinking 🤔",
@@ -408,15 +507,16 @@ async def main(message: cl.Message):
                                         )
                                         await thinking_step.send()
                                     
-                                    # Stream thinking content to the step
+                                    # For Chainlit 2.4.0, use the direct streaming approach
+                                    # This is the most efficient way to stream tokens
                                     await thinking_step.stream_token(thinking_text)
-                                    logger.debug(f"Thinking: {thinking_text}")
+                                    logger.info(f"Thinking: {thinking_text}")
                                 
                                 # Handle signature directly from reasoningContent
                                 if 'signature' in delta['reasoningContent']:
                                     signature = delta['reasoningContent']['signature']
                                     thinking_manager.set_signature(signature)
-                                    logger.debug(f"Received thinking signature: {signature[:20]}...")
+                                    logger.info(f"Received thinking signature: {signature[:20]}...")
                             
                             # Handle redacted thinking
                             if 'redactedReasoningContent' in delta and 'data' in delta['redactedReasoningContent']:
@@ -432,10 +532,10 @@ async def main(message: cl.Message):
                                     await thinking_step.send()
                                 
                                 await thinking_step.stream_token("\n[Redacted thinking content]")
-                                logger.debug("Received redacted thinking content")
+                                logger.info("Received redacted thinking content")
 
                     if 'messageStop' in event:
-                        logger.debug(f"\nStop reason: {event['messageStop']['stopReason']}")
+                        logger.info(f"\nStop reason: {event['messageStop']['stopReason']}")
                         
                         # Complete thinking step if it exists
                         if thinking_step:
@@ -444,19 +544,22 @@ async def main(message: cl.Message):
                     if 'metadata' in event:
                         metadata = event['metadata']
                         if 'usage' in metadata:
-                            logger.debug("\nToken usage")
-                            logger.debug(f"Input tokens: {metadata['usage']['inputTokens']}")
-                            logger.debug(
+                            logger.info("\nToken usage")
+                            logger.info(f"Input tokens: {metadata['usage']['inputTokens']}")
+                            logger.info(
                                 f":Output tokens: {metadata['usage']['outputTokens']}")
-                            logger.debug(f":Total tokens: {metadata['usage']['totalTokens']}")
+                            logger.info(f":Total tokens: {metadata['usage']['totalTokens']}")
                             api_usage = {"inputTokenCount": metadata['usage']['inputTokens'],
                                         "outputTokenCount": metadata['usage']['outputTokens'],
                                         "invocationLatency": "not available in this API call",
                                         "firstByteLatency": "not available in this API call"}
                         if 'metrics' in event['metadata']:
-                            logger.debug(
+                            logger.info(
                                 f"Latency: {metadata['metrics']['latencyMs']} milliseconds")
                             api_usage["invocationLatency"] = metadata['metrics']['latencyMs']
+                
+                # Get the message history
+                message_history = cl.user_session.get("message_history")
                 
                 # Create the assistant message with properly formatted thinking blocks for API
                 if thinking_enabled and thinking_manager.has_thinking():
@@ -470,7 +573,7 @@ async def main(message: cl.Message):
                     })
                     
                     # Log what we're storing in message history
-                    logger.debug(f"Stored assistant message with {len(api_blocks)} thinking blocks in message history")
+                    logger.info(f"Stored assistant message with {len(api_blocks)} thinking blocks in message history")
                 else:
                     # Add to message history without thinking blocks
                     message_history.append({
@@ -478,16 +581,27 @@ async def main(message: cl.Message):
                         "content": [{"text": msg.content}]
                     })
         else:
-            # Handle non-streaming response
-            response = generate_conversation(cl.user_session.get("bedrock_runtime"), model_info["id"], message.content, max_tokens, images, docs)
             
             # Get thinking enabled status
             thinking_enabled = cl.user_session.get("thinking_enabled")
             
             # Process the response
             text = ""
-            thinking_manager = ThinkingBlockManager() if thinking_enabled else None
+            thinking_manager = ThinkingService() if thinking_enabled else None
             
+            # Check if response is None or doesn't have the expected structure
+            if not response or 'output' not in response or 'message' not in response['output'] or 'content' not in response['output']['message']:
+                error_msg = "Error: Failed to get a valid response from the model."
+                logger.error(f"{error_msg} Response: {response}")
+                msg.content = error_msg
+                await msg.update()
+                return
+                error_msg = "Error: Failed to get a valid response from the model."
+                logger.error(f"{error_msg} Response: {response}")
+                msg.content = error_msg
+                await msg.update()
+                return
+                
             # Extract content from the response
             for content_item in response['output']['message']["content"]:
                 # Handle text content
@@ -504,18 +618,18 @@ async def main(message: cl.Message):
                         thinking_manager.add_thinking(thinking_text)
                         if thinking_signature:
                             thinking_manager.set_signature(thinking_signature)
-                            logger.debug(f"Received thinking signature (non-streaming): {thinking_signature[:20]}...")
+                            logger.info(f"Received thinking signature (non-streaming): {thinking_signature[:20]}...")
                         
                         # Create a thinking step to display in UI
                         thinking_step = cl.Step(
-                            name="Thinking Process",
+                            name="Thinking 🤔",
                             type="thinking"
                         )
                         await thinking_step.send()
                         await thinking_step.stream_token(thinking_text)
                         await thinking_step.update()
                         
-                        logger.debug(f"Extracted thinking content (non-streaming): {thinking_text[:100]}...")
+                        logger.info(f"Extracted thinking content (non-streaming): {thinking_text[:100]}...")
                 
                 # Handle redacted thinking content
                 elif thinking_enabled and 'redactedReasoningContent' in content_item:
@@ -531,10 +645,13 @@ async def main(message: cl.Message):
                     await thinking_step.stream_token("[Redacted thinking content]")
                     await thinking_step.update()
                     
-                    logger.debug("Extracted redacted thinking content (non-streaming)")
+                    logger.info("Extracted redacted thinking content (non-streaming)")
             
             # Update the message content
             msg.content = text
+            
+            # Get the message history
+            message_history = cl.user_session.get("message_history")
             
             # Add to message history with properly formatted thinking blocks for API
             if thinking_enabled and thinking_manager and thinking_manager.has_thinking():
@@ -547,7 +664,7 @@ async def main(message: cl.Message):
                     "content": [{"text": text}] + api_blocks
                 })
                 
-                logger.debug(f"Stored assistant message with {len(api_blocks)} thinking blocks in message history (non-streaming)")
+                logger.info(f"Stored assistant message with {len(api_blocks)} thinking blocks in message history (non-streaming)")
             else:
                 # Add to message history without thinking blocks
                 message_history.append({
@@ -567,10 +684,10 @@ async def main(message: cl.Message):
             invocation_cost = api_usage["inputTokenCount"]/1000 * model_info["cost"]["input_1k_price"] + api_usage["outputTokenCount"]/1000 * model_info["cost"]["output_1k_price"]
             total_cost = cl.user_session.get("total_cost") + invocation_cost
             cl.user_session.set("total_cost", total_cost)
-            logger.debug(f"Invocation cost: {invocation_cost}")
-            logger.debug(f"Total chat cost: {total_cost}")
+            logger.info(f"Invocation cost: {invocation_cost}")
+            logger.info(f"Total chat cost: {total_cost}")
         else:
-            logger.debug(f"api usage not defined")
+            logger.info(f"api usage not defined")
 
         if cl.user_session.get("costs"):
             precision = cl.user_session.get("precision")  # You can change this value to adjust the precision
@@ -596,4 +713,4 @@ def on_chat_end():
     # sometimes chainlit does not automatically delete the uploaded files. 
     # So we are removing all the files to garantee the privacy
     message_contents = cl.user_session.get("message_contents")
-    delete_contents(message_contents, True)
+    content_service.delete_contents(message_contents, True)

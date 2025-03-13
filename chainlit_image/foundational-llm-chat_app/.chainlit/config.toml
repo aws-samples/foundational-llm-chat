@@ -34,7 +34,7 @@ edit_message = true
 # Authorize users to spontaneously upload files with messages
 [features.spontaneous_file_upload]
     enabled = true
-    accept = ["image/jpeg", "image/gif","image/png", "image/webp", "application/pdf",
+    accept = ["image/jpeg", "image/gif","image/png", "image/webp", "application/pdf", "image/jpg",
                              "text/csv",
                              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                              "application/vnd.ms-excel",

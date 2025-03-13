@@ -4,6 +4,13 @@
 
 Data Persistance using DynamoDB. Waiting for this issue: https://github.com/Chainlit/chainlit/issues/1172
 
+## [1.3.1] - 2025-03-13
+
+### Changed
+- Code refactoring for better organization and maintainability
+- Improved code structure and documentation
+- Enhanced error handling and logging
+
 ## [1.3.0] - 2025-03-13
 
 ### Added
