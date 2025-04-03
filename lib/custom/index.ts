@@ -21,7 +21,7 @@ export class CustomResources extends Construct {
     const getCloudFrontPrefixList = new lambda.Function(this, 'getCloudFrontPrefixList', {
       code: lambda.Code.fromAsset("./custom_resources/lambda/cloudFront_get_prefix_list"),
       handler: 'cloudFront_get_prefix_list.handler',
-      runtime: lambda.Runtime.PYTHON_3_12,
+      runtime: lambda.Runtime.PYTHON_3_13,
       timeout: Duration.seconds(300),
       memorySize: 128,
       logGroup: new logs.LogGroup(this,  `${props.prefix}getCloudFrontPrefixListLogs`, {
