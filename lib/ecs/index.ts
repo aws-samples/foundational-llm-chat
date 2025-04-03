@@ -40,6 +40,8 @@ export class ecsApplication extends Construct {
   constructor(scope: Construct, id: string, props: ecsApplicationProps) {
     super(scope, id);
 
+    const containerEnvRegion = props.region || "us-west-2";
+
     // Store the client secret
     const authCodeSecret = new secretsmanager.Secret(this, "authCodeChainlitSecret", {
       secretName: `${props.prefix}chainlit_auth_secret`,
@@ -71,7 +73,7 @@ export class ecsApplication extends Construct {
           logRetention: logs.RetentionDays.FIVE_DAYS
         }),
         environment: {
-          AWS_REGION: props.region ? props.region : Stack.of(this).region,
+          AWS_REGION: containerEnvRegion,
         },
         secrets: {
           OAUTH_COGNITO_CLIENT_SECRET: ecs.Secret.fromSecretsManager(props.oauth_cognito_client_secret),
@@ -131,7 +133,7 @@ export class ecsApplication extends Construct {
 
     // Generate the resource ARNs
     const resourceArns = Object.values(props.bedrockModels).flatMap(model =>
-      generateArns(model, props.region || "us-west-2", props.accountId || "*")
+      generateArns(model, containerEnvRegion, props.accountId || "*")
     );
 
     // Allow the ECS task to call the Bedrock API
