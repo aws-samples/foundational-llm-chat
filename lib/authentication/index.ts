@@ -1,4 +1,4 @@
-import { CfnOutput, SecretValue, Duration } from "aws-cdk-lib";
+import { CfnOutput, Duration, RemovalPolicy } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as cognito from "aws-cdk-lib/aws-cognito";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
@@ -45,6 +45,7 @@ export class Cognito extends Construct {
         requireUppercase: true, // Require at least one uppercase letter in password
         tempPasswordValidity: Duration.days(3),
       },
+      removalPolicy: RemovalPolicy.DESTROY, // Destroy when the stack is deleted
     });
 
     // Create a new Cognito User Pool Client for the application
