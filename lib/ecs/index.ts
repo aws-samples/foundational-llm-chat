@@ -1,4 +1,4 @@
-import { Duration } from "aws-cdk-lib";
+import { Duration, Stack } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
@@ -55,7 +55,10 @@ export class ecsApplication extends Construct {
     });
 
     // Create an ECS cluster
-    const ecsCluster = new ecs.Cluster(this, "FoundationalLlmChatCluster", { vpc: props.vpc });
+    const ecsCluster = new ecs.Cluster(this, "FoundationalLlmChatCluster", {
+      containerInsightsV2: ecs.ContainerInsights.ENHANCED,
+      vpc: props.vpc
+    });
 
     // Create a Fargate service and configure it with the Docker image, environment variables, and other settings
     this.service = new ecsPatterns.ApplicationLoadBalancedFargateService(this, "FoundationalLlmChatService", {
@@ -68,7 +71,7 @@ export class ecsApplication extends Construct {
           logRetention: logs.RetentionDays.FIVE_DAYS
         }),
         environment: {
-          AWS_REGION: props.region ? props.region : "us-west-2",
+          AWS_REGION: props.region ? props.region : Stack.of(this).region,
         },
         secrets: {
           OAUTH_COGNITO_CLIENT_SECRET: ecs.Secret.fromSecretsManager(props.oauth_cognito_client_secret),
