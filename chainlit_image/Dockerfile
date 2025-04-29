@@ -18,14 +18,18 @@ ENV PYTHONUNBUFFERED 1
 # Set the working directory where user has access
 WORKDIR /home/chainlitworker/app
 
-# Copy your application with permission for the correct user
-COPY  --chown=chainlitworker:chainlitworker ./foundational-llm-chat_app .
+# Update path to access user-installed libraries (in advance, to suppress warnings later)
+ENV PATH="/home/chainlitworker/.local/bin:${PATH}"
 
-#install requirements --user for current owner
+# Copy just the requirements file at this stage, so that changes to the Python source don't need to
+# trigger a whole pip install re-run
+COPY  --chown=chainlitworker:chainlitworker ./foundational-llm-chat_app/requirements.txt ./requirements.txt
+
+# Install requirements --user for current owner
 RUN pip install -U --user -r /home/chainlitworker/app/requirements.txt
 
-#update path for using accessing libraries installed
-ENV PATH="/home/chainlitworker/.local/bin:${PATH}"
+# Copy the rest of the application code over
+COPY  --chown=chainlitworker:chainlitworker ./foundational-llm-chat_app .
 
 EXPOSE 8080
 

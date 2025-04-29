@@ -116,6 +116,9 @@ export class Networking extends Construct {
       logBucket: logBucket,
       logFilePrefix: "CloudFrontLogs",
     });
+    // Explicit dependency prevents DELETE_FAILED from CloudFront still writing logs while S3
+    // bucket is trying to empty and delete:
+    this.cloudFrontDistribution.node.addDependency(logBucket);
 
     const ddname = `https://${this.cloudFrontDistribution.distributionDomainName}`
     this.cloudFrontDistributionURLParameter = new ssm.StringParameter(this, 'cf_distribution_url', {

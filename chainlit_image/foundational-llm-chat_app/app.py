@@ -596,11 +596,6 @@ async def main(message: cl.Message):
                 msg.content = error_msg
                 await msg.update()
                 return
-                error_msg = "Error: Failed to get a valid response from the model."
-                logger.error(f"{error_msg} Response: {response}")
-                msg.content = error_msg
-                await msg.update()
-                return
                 
             # Extract content from the response
             for content_item in response['output']['message']["content"]:
