@@ -70,7 +70,7 @@ export class Parameters extends Construct {
       parameterName: `${props.prefix}bedrock_models_parameter`,
       description: "available models with prices (excluding system prompts)",
       stringValue: JSON.stringify(bedrock_models_without_system_prompts),
-      tier: ssm.ParameterTier.STANDARD,
+      tier: ssm.ParameterTier.INTELLIGENT_TIERING,
     });
   }
 }
