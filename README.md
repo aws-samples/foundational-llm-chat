@@ -35,6 +35,8 @@ Foundational LLM Chat is a Chainlit application built using AWS CDK and Converse
 
 - 🌐 Support for all text generation models in Amazon Bedrock through Converse API, including:
   - 🤖 Anthropic Claude models:
+    - Claude Opus 4
+    - Claude Sonnet 4
     - Claude 3 Opus
     - Claude 3 Sonnet
     - Claude 3.5 Sonnet
@@ -44,6 +46,7 @@ Foundational LLM Chat is a Chainlit application built using AWS CDK and Converse
   - 🦙 Meta Llama models:
     - Llama 3.1 (8B, 70B)
     - Llama 3.2 (1B, 3B, 11B Vision, 90B Vision)
+    - Llama 4
   - 🌟 Mistral models
   - 🤖 Amazon Nova models
   - 🔵 AI21 Jurassic models
