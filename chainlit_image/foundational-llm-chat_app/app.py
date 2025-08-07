@@ -6,10 +6,11 @@ from typing import Dict, List, Any, Optional
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
-from chainlit.input_widget import Switch, Slider, TextInput
+from chainlit.input_widget import Switch, Slider, TextInput, Select
 import sys
 import os
 import logging
+from mcp import ClientSession
 
 # Add the current directory to the Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -132,41 +133,72 @@ async def generate_conversation(bedrock_client=None, model_id=None, input_text=N
         "maxTokens": max_tokens
     }
     
-    # Only set temperature if thinking is not enabled
+    # Handle temperature based on model type and thinking state
     if not thinking_enabled:
         inference_config["temperature"] = float(cl.user_session.get("temperature"))
         logger.debug(f"Using temperature: {inference_config['temperature']}")
     else:
-        logger.debug("Temperature parameter omitted when thinking is enabled")
+        # Get current model info to check reasoning type
+        chat_profile = cl.user_session.get("chat_profile")
+        model_info = bedrock_models[chat_profile] if chat_profile else {}
+        reasoning_config = model_info.get("reasoning", {})
+        
+        # For OpenAI reasoning models, set temperature and top_p to 1
+        if isinstance(reasoning_config, dict) and reasoning_config.get("openai_reasoning_modalities"):
+            inference_config["temperature"] = 1.0
+            inference_config["topP"] = 1.0
+            logger.debug("OpenAI reasoning model: temperature and top_p set to 1.0")
+        else:
+            logger.debug("Standard thinking model: temperature parameter omitted")
 
     # Additional inference parameters to use.
     additional_model_fields = {}
     
     # Add reasoning capability if enabled
     if thinking_enabled:
-        # Get the reasoning budget from user settings
-        reasoning_budget = int(cl.user_session.get("reasoning_budget"))
-        additional_model_fields["thinking"] = {
-            "type": "enabled",
-            "budget_tokens": reasoning_budget
-        }
-        logger.debug(f"Thinking enabled with budget: {reasoning_budget} tokens")
+        # Get current model info to check reasoning type
+        chat_profile = cl.user_session.get("chat_profile")
+        model_info = bedrock_models[chat_profile] if chat_profile else {}
+        reasoning_config = model_info.get("reasoning", {})
+        
+        # Check if this is an OpenAI reasoning model
+        if isinstance(reasoning_config, dict) and reasoning_config.get("openai_reasoning_modalities"):
+            # Use OpenAI reasoning effort format
+            reasoning_effort = cl.user_session.get("reasoning_effort", "medium")
+            additional_model_fields["reasoning_effort"] = reasoning_effort
+            logger.debug(f"OpenAI reasoning enabled with effort: {reasoning_effort}")
+        else:
+            # Use standard thinking format for other models
+            reasoning_budget = int(cl.user_session.get("reasoning_budget"))
+            additional_model_fields["thinking"] = {
+                "type": "enabled",
+                "budget_tokens": reasoning_budget
+            }
+            logger.debug(f"Standard thinking enabled with budget: {reasoning_budget} tokens")
     else:
         logger.debug("Thinking disabled")
         
-    logger.debug(
-        "Bedrock request payload:\n"
-        "Model ID: %s\n"
-        "Messages: %s\n"
-        "System Prompt: %s\n"
-        "Inference Config: %s\n"
-        "Additional Model Fields: %s",
-        model_id,
-        api_message_history,
-        cl.user_session.get("system_prompt"),
-        inference_config,
-        additional_model_fields
-    )
+    # Enhanced logging for debugging - show exact JSON fields sent to Converse API
+    import json
+    chat_profile = cl.user_session.get("chat_profile")
+    
+    logger.info("=" * 80)
+    logger.info(f"🚀 CONVERSE API CALL - MODEL: {chat_profile} ({model_id})")
+    logger.info("=" * 80)
+    
+    # Create the exact payload structure that will be sent to Converse API (excluding system prompt)
+    api_payload = {
+        "modelId": model_id,
+        "messages": api_message_history,
+        "inferenceConfig": inference_config if inference_config else None,
+        "additionalModelRequestFields": additional_model_fields if additional_model_fields else None
+    }
+    
+    # Note: system prompt is sent but excluded from log due to length
+    
+    logger.info("📋 EXACT JSON PAYLOAD:")
+    logger.info(json.dumps(api_payload, indent=2, default=str))
+    logger.info("=" * 80)
     
     if cl.user_session.get("streaming"):
         try: 
@@ -212,37 +244,109 @@ async def chat_profile():
 
 @cl.on_settings_update
 async def set_settings(settings):
+    # Get current model info to check streaming capability
+    chat_profile = cl.user_session.get("chat_profile")
+    model_info = bedrock_models[chat_profile] if chat_profile else {}
+    streaming_supported = model_info.get("streaming", True)  # Default to True for backward compatibility
+    
     # Store basic settings
-    cl.user_session.set("streaming", settings["streaming"])
+    # Handle streaming - only set if the control exists (streaming supported)
+    if "streaming" in settings:
+        cl.user_session.set("streaming", settings["streaming"])
+    else:
+        # If streaming control doesn't exist, force to False
+        cl.user_session.set("streaming", False)
+    
     cl.user_session.set("max_tokens", settings["max_tokens"])
     cl.user_session.set("costs", settings["costs"])
     cl.user_session.set("precision", settings["precision"])
     cl.user_session.set("system_prompt", [{"text": settings["system_prompt"]}])
     
-    # Handle thinking settings if they exist
-    thinking_enabled = settings.get("thinking_enabled", False)
-    cl.user_session.set("thinking_enabled", thinking_enabled)
+    # Handle thinking settings - check if this is an OpenAI reasoning model
+    reasoning_config = model_info.get("reasoning", {})
+    is_openai_reasoning = isinstance(reasoning_config, dict) and reasoning_config.get("openai_reasoning_modalities")
+    
+    if is_openai_reasoning:
+        # For OpenAI reasoning models, thinking is always enabled
+        thinking_enabled = True
+        cl.user_session.set("thinking_enabled", True)
+    else:
+        # For other models, use the setting value
+        thinking_enabled = settings.get("thinking_enabled", False)
+        cl.user_session.set("thinking_enabled", thinking_enabled)
+    
+    # Handle reasoning effort for OpenAI models
+    if "reasoning_effort" in settings:
+        cl.user_session.set("reasoning_effort", settings["reasoning_effort"])
+    
+    # Handle send reasoning back toggle for OpenAI models
+    if "send_reasoning_back" in settings:
+        cl.user_session.set("send_reasoning_back", settings["send_reasoning_back"])
+    
+    # Handle reasoning budget for standard models
+    if "reasoning_budget" in settings:
+        cl.user_session.set("reasoning_budget", settings["reasoning_budget"])
     
     # Always set a default temperature, even if the control is hidden
     cl.user_session.set("temperature", settings.get("temperature", 1.0))
     
-    # If thinking is enabled, store reasoning budget and update UI
-    if thinking_enabled and "reasoning_budget" in settings:
-        cl.user_session.set("reasoning_budget", settings["reasoning_budget"])
+    # If thinking is enabled, update UI dynamically
+    if thinking_enabled:
+        # Build dynamic settings controls
+        dynamic_controls = []
         
-        # Show all controls but disable temperature when thinking is enabled
-        await cl.ChatSettings([
-            Switch(id="streaming", label="Streaming", initial=settings["streaming"]),
-            TextInput(id="system_prompt", label="System Prompt", initial=settings["system_prompt"]),
-            Switch(id="thinking_enabled", label="Enable Thinking Process", initial=True),
-            Slider(
-                id="reasoning_budget",
-                label="Reasoning Budget (tokens)",
-                initial=settings["reasoning_budget"],
-                min=1024,
-                max=64000,
-                step=1024,
-            ),
+        # Add streaming control only if supported
+        if streaming_supported:
+            dynamic_controls.append(
+                Switch(id="streaming", label="Streaming", initial=cl.user_session.get("streaming"))
+            )
+        
+        # Add common controls
+        dynamic_controls.append(
+            TextInput(id="system_prompt", label="System Prompt", initial=settings["system_prompt"])
+        )
+        
+        # Check if this is an OpenAI reasoning model
+        reasoning_config = model_info.get("reasoning", {})
+        is_openai_reasoning = isinstance(reasoning_config, dict) and reasoning_config.get("openai_reasoning_modalities")
+        
+        if is_openai_reasoning:
+            # For OpenAI models, don't show thinking toggle (always enabled)
+            # Add OpenAI reasoning effort control
+            dynamic_controls.append(
+                Select(
+                    id="reasoning_effort",
+                    label="Reasoning Effort",
+                    values=["low", "medium", "high"],
+                    initial_index=["low", "medium", "high"].index(settings.get("reasoning_effort", "medium"))
+                )
+            )
+            # Add toggle for sending reasoning back in conversation
+            dynamic_controls.append(
+                Switch(
+                    id="send_reasoning_back", 
+                    label="Send Reasoning Back in Conversation", 
+                    initial=settings.get("send_reasoning_back", False)
+                )
+            )
+        else:
+            # For standard models, show thinking toggle and reasoning budget
+            dynamic_controls.append(
+                Switch(id="thinking_enabled", label="Enable Thinking Process", initial=True)
+            )
+            dynamic_controls.append(
+                Slider(
+                    id="reasoning_budget",
+                    label="Reasoning Budget (tokens)",
+                    initial=settings.get("reasoning_budget", 4096),
+                    min=1024,
+                    max=64000,
+                    step=1024,
+                )
+            )
+        
+        # Add remaining controls
+        dynamic_controls.extend([
             Slider(
                 id="temperature",
                 label="Temperature (disabled when thinking is enabled)",
@@ -257,12 +361,26 @@ async def set_settings(settings):
                 label="Maximum tokens",
                 initial=settings["max_tokens"],
                 min=1,
-                max=64000,
+                max=model_info.get("maxTokens", 4096),
                 step=1024,
             ),
             Switch(id="costs", label="Show costs in the answer", initial=settings["costs"]),
             Slider(id="precision", label="Digit Precision of costs", initial=settings["precision"], min=1, max=10, step=1)
-        ]).send()
+        ])
+        
+        await cl.ChatSettings(dynamic_controls).send()
+
+@cl.on_mcp_connect
+async def on_mcp_connect(connection, session: ClientSession):
+    """Called when an MCP connection is established"""
+    # Your connection initialization code here
+    # This handler is required for MCP to work
+    
+@cl.on_mcp_disconnect
+async def on_mcp_disconnect(name: str, session: ClientSession):
+    """Called when an MCP connection is terminated"""
+    # Your cleanup code here
+    # This handler is optional
 
 @cl.on_chat_start
 async def start():
@@ -331,35 +449,74 @@ async def start():
         [{"text": system_prompt}]
     )
     
-    # Check if the model supports reasoning
+    # Check if the model supports reasoning and streaming
     reasoning_supported = model_info.get("reasoning", False)
+    streaming_supported = model_info.get("streaming", True)  # Default to True for backward compatibility
     
     # Build settings controls based on model capabilities
-    settings_controls = [
-        Switch(id="streaming", label="Streaming", initial=True)
-    ]
+    settings_controls = []
+    
+    # Add streaming control based on model capability
+    if streaming_supported:
+        settings_controls.append(
+            Switch(id="streaming", label="Streaming", initial=True)
+        )
+    # If streaming is not supported, don't add the control at all (it will disappear)
     
     # Only add reasoning controls if the model supports it
     if reasoning_supported:
-        # Set thinking enabled by default for models that support it
-        thinking_enabled = True
-        cl.user_session.set("thinking_enabled", thinking_enabled)
+        # Check if this is an OpenAI reasoning model
+        reasoning_config = model_info.get("reasoning", {})
+        is_openai_reasoning = isinstance(reasoning_config, dict) and reasoning_config.get("openai_reasoning_modalities")
         
-        settings_controls.append(
-            Switch(id="thinking_enabled", label="Enable Thinking Process", initial=thinking_enabled)
-        )
-        
-        # Add reasoning budget
-        settings_controls.append(
-            Slider(
-                id="reasoning_budget",
-                label="Reasoning Budget (tokens)",
-                initial=4096,
-                min=1024,
-                max=64000,
-                step=64,
+        if is_openai_reasoning:
+            # For OpenAI reasoning models, thinking is always enabled and cannot be toggled
+            thinking_enabled = True
+            cl.user_session.set("thinking_enabled", thinking_enabled)
+            
+            # Don't add the thinking toggle - it's always on for OpenAI models
+            # Add OpenAI reasoning effort control
+            settings_controls.append(
+                Select(
+                    id="reasoning_effort",
+                    label="Reasoning Effort",
+                    values=["low", "medium", "high"],
+                    initial_index=1  # Default to "medium"
+                )
             )
-        )
+            # Set default reasoning effort
+            cl.user_session.set("reasoning_effort", "medium")
+            
+            # Add toggle to control whether reasoning content is sent back in conversation history
+            settings_controls.append(
+                Switch(
+                    id="send_reasoning_back", 
+                    label="Send Reasoning Back in Conversation", 
+                    initial=False  # Default to False for safer behavior
+                )
+            )
+            # Set default value
+            cl.user_session.set("send_reasoning_back", False)
+        else:
+            # For standard reasoning models, thinking can be toggled
+            thinking_enabled = True
+            cl.user_session.set("thinking_enabled", thinking_enabled)
+            
+            settings_controls.append(
+                Switch(id="thinking_enabled", label="Enable Thinking Process", initial=thinking_enabled)
+            )
+            
+            # Add standard reasoning budget for non-OpenAI models
+            settings_controls.append(
+                Slider(
+                    id="reasoning_budget",
+                    label="Reasoning Budget (tokens)",
+                    initial=4096,
+                    min=1024,
+                    max=64000,
+                    step=64,
+                )
+            )
         
         # Add temperature control (disabled when thinking is enabled)
         settings_controls.append(
@@ -393,11 +550,13 @@ async def start():
     # Add remaining controls
     # Use model-specific maxTokens from config if available, otherwise default to 4096
     max_tokens_initial = model_info.get("maxTokens", 4096)
+    # Set initial value to 50% of maxTokens but cap at 8192
+    initial_tokens = min(max_tokens_initial // 2, 8192)
     settings_controls.extend([
         Slider(
             id="max_tokens",
             label="Maximum tokens",
-            initial=max_tokens_initial // 2,
+            initial=initial_tokens,
             min=1,
             max=max_tokens_initial,
             step=64,
@@ -562,7 +721,18 @@ async def main(message: cl.Message):
                 message_history = cl.user_session.get("message_history")
                 
                 # Create the assistant message with properly formatted thinking blocks for API
-                if thinking_enabled and thinking_manager.has_thinking():
+                # Check if we should include reasoning content in message history
+                chat_profile = cl.user_session.get("chat_profile")
+                model_info = bedrock_models[chat_profile] if chat_profile else {}
+                reasoning_config = model_info.get("reasoning", {})
+                is_openai_reasoning = isinstance(reasoning_config, dict) and reasoning_config.get("openai_reasoning_modalities")
+                
+                # For OpenAI models, check the user setting; for others, always include reasoning
+                should_include_reasoning = True
+                if is_openai_reasoning:
+                    should_include_reasoning = cl.user_session.get("send_reasoning_back", False)
+                
+                if thinking_enabled and thinking_manager.has_thinking() and should_include_reasoning:
                     # Get thinking blocks formatted for API
                     api_blocks = thinking_manager.get_api_blocks()
                     
@@ -580,6 +750,8 @@ async def main(message: cl.Message):
                         "role": "assistant", 
                         "content": [{"text": msg.content}]
                     })
+                    if is_openai_reasoning and not should_include_reasoning:
+                        logger.debug("OpenAI reasoning model: reasoning content excluded from history per user setting")
         else:
 
             # Get thinking enabled status
@@ -649,7 +821,21 @@ async def main(message: cl.Message):
             message_history = cl.user_session.get("message_history")
             
             # Add to message history with properly formatted thinking blocks for API
-            if thinking_enabled and thinking_manager and thinking_manager.has_thinking():
+            # Check if this model supports reasoning content in message history
+            chat_profile = cl.user_session.get("chat_profile")
+            model_info = bedrock_models[chat_profile] if chat_profile else {}
+            reasoning_config = model_info.get("reasoning", {})
+            # NOTE: OpenAI reasoning models don't support reasoning content in message history 
+            # when using Bedrock Converse API. This limitation is specific to the Converse API -
+            # reasoning content in history is likely supported with plain invoke() or OpenAI SDK directly.
+            is_openai_reasoning = isinstance(reasoning_config, dict) and reasoning_config.get("openai_reasoning_modalities")
+            
+            # For OpenAI models, check the user setting; for others, always include reasoning
+            should_include_reasoning = True
+            if is_openai_reasoning:
+                should_include_reasoning = cl.user_session.get("send_reasoning_back", False)
+            
+            if thinking_enabled and thinking_manager and thinking_manager.has_thinking() and should_include_reasoning:
                 # Get thinking blocks formatted for API
                 api_blocks = thinking_manager.get_api_blocks()
                 
@@ -666,6 +852,8 @@ async def main(message: cl.Message):
                     "role": "assistant",
                     "content": [{"text": text}]
                 })
+                if is_openai_reasoning and not should_include_reasoning:
+                    logger.debug("OpenAI reasoning model: reasoning content excluded from history per user setting (non-streaming)")
             
             # Extract usage information
             api_usage = {
