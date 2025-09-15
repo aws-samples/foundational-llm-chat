@@ -53,9 +53,12 @@ class ThinkingService:
         """
         return bool(self.thinking_text)
         
-    def get_api_blocks(self) -> List[Dict[str, Any]]:
+    def get_api_blocks(self, include_signature: bool = True) -> List[Dict[str, Any]]:
         """
         Get thinking blocks formatted for API.
+        
+        Args:
+            include_signature: Whether to include signature field (some models don't support it)
         
         Returns:
             A list of thinking blocks.
@@ -64,17 +67,22 @@ class ThinkingService:
         
         # Add thinking block if there is thinking content
         if self.thinking_text:
-            thinking_block = {
-                "reasoningContent": {
-                    "reasoningText": {
-                        "text": self.thinking_text
-                    }
-                }
+            reasoning_text = {
+                "text": self.thinking_text
             }
             
-            # Add signature if available
-            if self.signature:
-                thinking_block["reasoningContent"]["reasoningText"]["signature"] = self.signature
+            # Only include signature if supported by the model and we have one
+            if include_signature and self.signature:
+                reasoning_text["signature"] = self.signature
+                logger.debug(f"Including signature in reasoning content: {self.signature[:20] if len(self.signature) > 20 else self.signature}...")
+            elif not include_signature and self.signature:
+                logger.debug("Signature present but excluded (model doesn't support signatures)")
+            
+            thinking_block = {
+                "reasoningContent": {
+                    "reasoningText": reasoning_text
+                }
+            }
                 
             blocks.append(thinking_block)
             
