@@ -2,11 +2,11 @@
 
 // This line ensures that the source map support is registered, which provides
 // a better experience when debugging code in production.
-import 'source-map-support/register';
+import "source-map-support/register";
 
 // Importing the required AWS CDK libraries and the FoundationalLlmChatStack class.
-import * as cdk from 'aws-cdk-lib';
-import { FoundationalLlmChatStack } from '../lib/foundational-llm-chat-stack';
+import * as cdk from "aws-cdk-lib";
+import { FoundationalLlmChatStack } from "../lib/foundational-llm-chat-stack";
 import { getConfig } from "./config";
 
 // Creating a new instance of the AWS CDK App, which represents the root of the CDK application.

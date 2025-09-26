@@ -15,17 +15,21 @@ export interface FoundationalLlmChatStackProps extends StackProps {
 }
 
 export class FoundationalLlmChatStack extends Stack {
-  constructor(scope: Construct, id: string, props: FoundationalLlmChatStackProps) {
+  constructor(
+    scope: Construct,
+    id: string,
+    props: FoundationalLlmChatStackProps,
+  ) {
     super(scope, id, props);
 
     const prompts = new Prompts(this, "Prompts", {
       bedrock_models: props.config.bedrock_models,
       default_system_prompt: props.config.default_system_prompt,
-      prefix: props.config.prefix
+      prefix: props.config.prefix,
     });
 
     const dataLayer = new DataLayer(this, "DataLayer", {
-      prefix: props.config.prefix
+      prefix: props.config.prefix,
     });
 
     // load Parameters from config file
@@ -36,7 +40,7 @@ export class FoundationalLlmChatStack extends Stack {
       max_content_size_mb_parameter: props.config.max_content_size_mb_parameter,
       bedrock_models_parameter: props.config.bedrock_models,
       dynamodb_dataLayer_name_parameter: dataLayer.table.tableName,
-      s3_dataLayer_name_parameter: dataLayer.bucket.bucketName
+      s3_dataLayer_name_parameter: dataLayer.bucket.bucketName,
     });
 
     // Create an instance of the CustomResources construct
@@ -65,7 +69,8 @@ export class FoundationalLlmChatStack extends Stack {
       clientIdParameter: cognito.clientIdParameter, // Use the client ID from Cognito
       cognitoDomainParameter: cognito.cognitoDomainParameter,
       publicLoadBalancer: networking.publicLoadBalancer, // Use the public load balancer from Networking
-      cloudFrontDistributionURLParameter: networking.cloudFrontDistributionURLParameter, // Use the CloudFront distribution from Networking
+      cloudFrontDistributionURLParameter:
+        networking.cloudFrontDistributionURLParameter, // Use the CloudFront distribution from Networking
       oauth_cognito_client_secret: cognito.oauth_cognito_client_secret, // Use the secrets from SecretsManager
       system_prompts_parameter: parameters.system_prompts_parameter, // System prompt from the configuration
       max_characters_parameter: parameters.max_characters_parameter, // Max number of char from the configuration
@@ -73,9 +78,10 @@ export class FoundationalLlmChatStack extends Stack {
       bedrock_models_parameter: parameters.bedrock_models_parameter, // Models configuration from the configuration
       prefix: props.config.prefix, // Prefix from the configuration
       bedrockModels: props.config.bedrock_models, //models configured
-      dynamodb_dataLayer_name_parameter: parameters.dynamodb_dataLayer_name_parameter,
+      dynamodb_dataLayer_name_parameter:
+        parameters.dynamodb_dataLayer_name_parameter,
       s3_dataLayer_name_parameter: parameters.s3_dataLayer_name_parameter,
-      accountId: props.env?.account
+      accountId: props.env?.account,
     });
   }
 }

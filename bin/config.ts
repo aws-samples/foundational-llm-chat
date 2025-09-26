@@ -36,40 +36,39 @@ export interface SystemConfig {
   bedrock_models: BedrockModels;
 }
 
-
 export function getConfig(): SystemConfig {
   if (existsSync("./bin/config.json")) {
     return JSON.parse(readFileSync("./bin/config.json").toString("utf8"));
   }
 
-// Default config
-return {
-  default_system_prompt: "You are an assistant",
-  max_characters_parameter: "None",
-  max_content_size_mb_parameter: "None",
-  default_aws_region: "us-west-2",
-  prefix: "newv",
-  bedrock_models: {
-    "Claude Sonnet 3.5 New": {
-      "id": "us.anthropic.claude-3-5-sonnet-20241022-v2:0",
-      "inference_profile": {
-        "prefix": "us",
-        "region": "us-west-2"
+  // Default config
+  return {
+    default_system_prompt: "You are an assistant",
+    max_characters_parameter: "None",
+    max_content_size_mb_parameter: "None",
+    default_aws_region: "us-west-2",
+    prefix: "newv",
+    bedrock_models: {
+      "Claude Sonnet 3.5 New": {
+        id: "us.anthropic.claude-3-5-sonnet-20241022-v2:0",
+        inference_profile: {
+          prefix: "us",
+          region: "us-west-2",
+        },
+        region: ["us-east-1", "us-west-2", "us-east-2"],
+        cost: {
+          input_1k_price: 0.003,
+          output_1k_price: 0.015,
+        },
+        default: true,
+        maxTokens: 4096,
+        vision: true,
+        document: true,
+        tool: true,
+        reasoning: false,
       },
-      "region": ["us-east-1", "us-west-2", "us-east-2"],
-      "cost": {
-        "input_1k_price": 0.003,
-        "output_1k_price": 0.015
-      },
-      "default": true,
-      "maxTokens": 4096,
-      "vision": true,
-      "document": true,
-      "tool": true,
-      "reasoning": false
-    }
-  }
-};
+    },
+  };
 }
 
 export const config: SystemConfig = getConfig();

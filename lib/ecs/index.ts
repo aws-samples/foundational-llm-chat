@@ -12,7 +12,6 @@ import * as logs from "aws-cdk-lib/aws-logs";
 import { BedrockModels, BedrockModel } from "../../bin/config";
 import { ModelPrompts } from "../prompts";
 
-
 // Interface to define the properties required for the ECS Application construct
 export interface ecsApplicationProps {
   readonly region: string;
@@ -30,8 +29,8 @@ export interface ecsApplicationProps {
   readonly bedrockModels: BedrockModels;
   readonly accountId?: string;
   readonly prompts_manager_list: ModelPrompts;
-  readonly dynamodb_dataLayer_name_parameter: ssm.StringParameter,
-  readonly s3_dataLayer_name_parameter: ssm.StringParameter,
+  readonly dynamodb_dataLayer_name_parameter: ssm.StringParameter;
+  readonly s3_dataLayer_name_parameter: ssm.StringParameter;
 }
 
 export class ecsApplication extends Construct {
@@ -43,13 +42,17 @@ export class ecsApplication extends Construct {
     const containerEnvRegion = props.region || "us-west-2";
 
     // Store the client secret
-    const authCodeSecret = new secretsmanager.Secret(this, "authCodeChainlitSecret", {
-      secretName: `${props.prefix}chainlit_auth_secret`,
-      description: "Secret nedeed by chainlit",
-      generateSecretString: {
-        passwordLength: 64,
+    const authCodeSecret = new secretsmanager.Secret(
+      this,
+      "authCodeChainlitSecret",
+      {
+        secretName: `${props.prefix}chainlit_auth_secret`,
+        description: "Secret nedeed by chainlit",
+        generateSecretString: {
+          passwordLength: 64,
+        },
       },
-    });
+    );
 
     // Create a Docker image asset from the local directory
     const image = new DockerImageAsset(this, "chainlit_image", {
@@ -59,81 +62,115 @@ export class ecsApplication extends Construct {
     // Create an ECS cluster
     const ecsCluster = new ecs.Cluster(this, "FoundationalLlmChatCluster", {
       containerInsightsV2: ecs.ContainerInsights.ENHANCED,
-      vpc: props.vpc
+      vpc: props.vpc,
     });
 
     // Create a Fargate service and configure it with the Docker image, environment variables, and other settings
-    this.service = new ecsPatterns.ApplicationLoadBalancedFargateService(this, "FoundationalLlmChatService", {
-      cluster: ecsCluster,
-      taskImageOptions: {
-        image: ecs.ContainerImage.fromDockerImageAsset(image),
-        containerPort: 8080,
-        logDriver: ecs.LogDrivers.awsLogs({
-          streamPrefix: `${props.prefix}FoundationalLlmChatServiceECSLogs`,
-          logRetention: logs.RetentionDays.FIVE_DAYS
-        }),
-        environment: {
-          AWS_REGION: containerEnvRegion,
+    this.service = new ecsPatterns.ApplicationLoadBalancedFargateService(
+      this,
+      "FoundationalLlmChatService",
+      {
+        cluster: ecsCluster,
+        taskImageOptions: {
+          image: ecs.ContainerImage.fromDockerImageAsset(image),
+          containerPort: 8080,
+          logDriver: ecs.LogDrivers.awsLogs({
+            streamPrefix: `${props.prefix}FoundationalLlmChatServiceECSLogs`,
+            logRetention: logs.RetentionDays.FIVE_DAYS,
+          }),
+          environment: {
+            AWS_REGION: containerEnvRegion,
+          },
+          secrets: {
+            OAUTH_COGNITO_CLIENT_SECRET: ecs.Secret.fromSecretsManager(
+              props.oauth_cognito_client_secret,
+            ),
+            CHAINLIT_AUTH_SECRET: ecs.Secret.fromSecretsManager(authCodeSecret),
+            OAUTH_COGNITO_DOMAIN: ecs.Secret.fromSsmParameter(
+              props.cognitoDomainParameter,
+            ),
+            OAUTH_COGNITO_CLIENT_ID: ecs.Secret.fromSsmParameter(
+              props.clientIdParameter,
+            ),
+            CHAINLIT_URL: ecs.Secret.fromSsmParameter(
+              props.cloudFrontDistributionURLParameter,
+            ),
+            SYSTEM_PROMPT_LIST: ecs.Secret.fromSsmParameter(
+              props.system_prompts_parameter,
+            ),
+            MAX_CHARACTERS: ecs.Secret.fromSsmParameter(
+              props.max_characters_parameter,
+            ),
+            MAX_CONTENT_SIZE_MB: ecs.Secret.fromSsmParameter(
+              props.max_content_size_mb_parameter,
+            ),
+            BEDROCK_MODELS: ecs.Secret.fromSsmParameter(
+              props.bedrock_models_parameter,
+            ),
+            DYNAMODB_DATA_LAYER_NAME: ecs.Secret.fromSsmParameter(
+              props.dynamodb_dataLayer_name_parameter,
+            ),
+            S3_DATA_LAYER_NAME: ecs.Secret.fromSsmParameter(
+              props.s3_dataLayer_name_parameter,
+            ),
+          },
         },
-        secrets: {
-          OAUTH_COGNITO_CLIENT_SECRET: ecs.Secret.fromSecretsManager(props.oauth_cognito_client_secret),
-          CHAINLIT_AUTH_SECRET: ecs.Secret.fromSecretsManager(authCodeSecret),
-          OAUTH_COGNITO_DOMAIN: ecs.Secret.fromSsmParameter(props.cognitoDomainParameter),
-          OAUTH_COGNITO_CLIENT_ID: ecs.Secret.fromSsmParameter(props.clientIdParameter),
-          CHAINLIT_URL: ecs.Secret.fromSsmParameter(props.cloudFrontDistributionURLParameter),
-          SYSTEM_PROMPT_LIST: ecs.Secret.fromSsmParameter(props.system_prompts_parameter),
-          MAX_CHARACTERS: ecs.Secret.fromSsmParameter(props.max_characters_parameter),
-          MAX_CONTENT_SIZE_MB: ecs.Secret.fromSsmParameter(props.max_content_size_mb_parameter),
-          BEDROCK_MODELS: ecs.Secret.fromSsmParameter(props.bedrock_models_parameter),
-          DYNAMODB_DATA_LAYER_NAME: ecs.Secret.fromSsmParameter(props.dynamodb_dataLayer_name_parameter),
-          S3_DATA_LAYER_NAME: ecs.Secret.fromSsmParameter(props.s3_dataLayer_name_parameter),
+        taskSubnets: { subnets: props.vpc.privateSubnets },
+        loadBalancer: props.publicLoadBalancer,
+        openListener: false,
+        memoryLimitMiB: 1024,
+        cpu: 512,
+        desiredCount: 2,
+        minHealthyPercent: 50,
+        runtimePlatform: {
+          operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
+          cpuArchitecture: ecs.CpuArchitecture.X86_64,
         },
+        capacityProviderStrategies: [
+          {
+            capacityProvider: "FARGATE", // all container with fargate spot is not advided for production, use FARGATE instead or a mix with FARGATE_SPOT
+            base: 1,
+            weight: 1,
+          },
+        ],
       },
-      taskSubnets: { subnets: props.vpc.privateSubnets },
-      loadBalancer: props.publicLoadBalancer,
-      openListener: false,
-      memoryLimitMiB: 1024,
-      cpu: 512,
-      desiredCount: 2,
-      minHealthyPercent: 50,
-      runtimePlatform: {
-        operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
-        cpuArchitecture: ecs.CpuArchitecture.X86_64,
-      },
-      capacityProviderStrategies: [
-        {
-          capacityProvider: "FARGATE", // all container with fargate spot is not advided for production, use FARGATE instead or a mix with FARGATE_SPOT
-          base: 1,
-          weight: 1,
-        },
-      ],
-    });
+    );
 
-    const generateArns = (model: BedrockModel, defaultRegion: string, accountId: string) => {
+    const generateArns = (
+      model: BedrockModel,
+      defaultRegion: string,
+      accountId: string,
+    ) => {
       const arns: string[] = [];
 
       // Handle region list
       if (Array.isArray(model.region)) {
-        model.region.forEach(region => {
-          const modelId = model.inference_profile ? model.id.replace(`${model.inference_profile.prefix}.`, '') : model.id;
+        model.region.forEach((region) => {
+          const modelId = model.inference_profile
+            ? model.id.replace(`${model.inference_profile.prefix}.`, "")
+            : model.id;
           arns.push(`arn:aws:bedrock:${region}::foundation-model/${modelId}`);
         });
       } else {
         // If no region list, use the default region
-        arns.push(`arn:aws:bedrock:${defaultRegion}::foundation-model/${model.id}`);
+        arns.push(
+          `arn:aws:bedrock:${defaultRegion}::foundation-model/${model.id}`,
+        );
       }
 
       // Handle inference_profile
       if (model.inference_profile) {
-        arns.push(`arn:aws:bedrock:${model.inference_profile.region}:${accountId}:inference-profile/${model.id}`);
+        arns.push(
+          `arn:aws:bedrock:${model.inference_profile.region}:${accountId}:inference-profile/${model.id}`,
+        );
       }
 
       return arns;
     };
 
     // Generate the resource ARNs
-    const resourceArns = Object.values(props.bedrockModels).flatMap(model =>
-      generateArns(model, containerEnvRegion, props.accountId || "*")
+    const resourceArns = Object.values(props.bedrockModels).flatMap((model) =>
+      generateArns(model, containerEnvRegion, props.accountId || "*"),
     );
 
     // Allow the ECS task to call the Bedrock API
@@ -141,13 +178,16 @@ export class ecsApplication extends Construct {
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         resources: resourceArns,
-        actions: ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"],
-      })
+        actions: [
+          "bedrock:InvokeModel",
+          "bedrock:InvokeModelWithResponseStream",
+        ],
+      }),
     );
 
     // Generate ARNs for the prompts
-    const promptArns = Object.values(props.prompts_manager_list).map(prompt =>
-      `${prompt.arn}`
+    const promptArns = Object.values(props.prompts_manager_list).map(
+      (prompt) => `${prompt.arn}`,
     );
 
     // Allow the ECS task to get the prompts
@@ -156,7 +196,7 @@ export class ecsApplication extends Construct {
         effect: iam.Effect.ALLOW,
         resources: promptArns,
         actions: ["bedrock:GetPrompt"],
-      })
+      }),
     );
 
     // Allow the ECS task to write and get from S3 table and Dynamo
@@ -167,7 +207,7 @@ export class ecsApplication extends Construct {
           `arn:aws:s3:::${props.s3_dataLayer_name_parameter.stringValue}`,
           `arn:aws:s3:::${props.s3_dataLayer_name_parameter.stringValue}/*`,
           `arn:aws:dynamodb:${props.region}:${props.accountId}:table/${props.dynamodb_dataLayer_name_parameter.stringValue}`,
-          `arn:aws:dynamodb:${props.region}:${props.accountId}:table/${props.dynamodb_dataLayer_name_parameter.stringValue}/*`
+          `arn:aws:dynamodb:${props.region}:${props.accountId}:table/${props.dynamodb_dataLayer_name_parameter.stringValue}/*`,
         ],
         actions: [
           "s3:PutObject",
@@ -178,9 +218,9 @@ export class ecsApplication extends Construct {
           "dynamodb:Query",
           "dynamodb:Scan",
           "dynamodb:UpdateItem",
-          "dynamodb:DeleteItem"
-        ]
-      })
+          "dynamodb:DeleteItem",
+        ],
+      }),
     );
 
     // Enable sticky sessions for the Fargate service
