@@ -4,7 +4,7 @@ import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as ecsPatterns from "aws-cdk-lib/aws-ecs-patterns";
 import * as iam from "aws-cdk-lib/aws-iam";
-import { DockerImageAsset } from "aws-cdk-lib/aws-ecr-assets";
+import { DockerImageAsset, Platform } from "aws-cdk-lib/aws-ecr-assets";
 import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import * as ssm from "aws-cdk-lib/aws-ssm";
@@ -57,6 +57,7 @@ export class ecsApplication extends Construct {
     // Create a Docker image asset from the local directory
     const image = new DockerImageAsset(this, "chainlit_image", {
       directory: "./chainlit_image",
+      platform: Platform.LINUX_AMD64,
     });
 
     // Create an ECS cluster
