@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "fs";
 export interface InferenceProfile {
   prefix: string;
   region: string;
+  global?: boolean;
 }
 
 export interface BedrockModel {

@@ -101,10 +101,11 @@ This field contains a dictionary of Bedrock models that the chatbot can use. Eac
    - **`region`**: an array of regions used to access the model. One if you did not enable cross-region inference, multiple for cross region inference.
 
 Optional configuration parameters include:
-- `inference_profile`: Settings for cross-region inference
-  - `prefix`: Region prefix (e.g., "us")
+- `inference_profile`: Settings for cross-region or global inference
+  - `prefix`: Region prefix (e.g., "us") or "global" for global inference profiles
   - `region`: Primary inference region
-  - Note: Required only when using cross-region inference. Models must be enabled in all specified regions
+  - `global`: *[optional]* Set to `true` for global inference profiles (e.g., `global.anthropic.claude-sonnet-4-5-20250929-v1:0`)
+  - Note: Required only when using cross-region or global inference. Models must be enabled in all specified regions
 - `system_prompt`: Custom system prompt
 - `cost`: Pricing information
   - **`input_1k_price`**: The cost (in USD) for 1,000 input tokens. You can find the pricing information for different models on the [AWS Bedrock pricing page](https://aws.amazon.com/bedrock/pricing/).
@@ -113,7 +114,14 @@ Optional configuration parameters include:
    - **`vision`** *[optional]*: true or false. If vision capabilities [are enabled](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html) for the model.
    - **`document`** *[optional]*: true or false. If document capabilities are enabled](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html) for the model.
    - **`tool`** *[optional]*: true or false. If tools capabilities are enabled](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html) for the model.
-   - **`reasoning`** *[optional]*: true or false. If thinking/reasoning capabilities are enabled for the model (currently supported by Claude 3.7 models).
+   - **`reasoning`** *[optional]*: Configures thinking/reasoning capabilities. Supports two formats:
+     - **Legacy format**: `true` or `false` (boolean) - Enables standard Anthropic-style reasoning
+     - **Extended format**: Object with detailed configuration:
+       - `"enabled": true` - Whether reasoning is supported
+       - `"openai_reasoning_modalities": true` - Enables OpenAI-style reasoning behavior
+       - `"hybrid": true` - *[optional]* Supports hybrid reasoning modes
+       - `"budget_thinking_tokens": true` - *[optional]* Supports configurable token budgets
+       - `"temperature_forced": 1` - *[optional]* Forces specific temperature when reasoning is enabled
 - **`default`** *[optional]*: true or false. The default selected model
 
 You can modify the `bedrock_models` section to include additional models or update the existing ones according to your requirements.
@@ -149,7 +157,48 @@ Here an example of the json:
       "vision": true,
       "document": true,
       "tool": true,
-      "reasoning": true
+      "reasoning": {
+        "enabled": true,
+        "hybrid": true,
+        "budget_thinking_tokens": true,
+        "temperature_forced": 1
+      }
+    },
+    "Claude Sonnet 4.5 (Global)": {
+      "id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+      "inference_profile": {
+        "prefix": "global",
+        "region": "us-west-2",
+        "global": true
+      },
+      "region": ["us-east-1", "us-west-2", "us-east-2"],
+      "cost": {
+        "input_1k_price": 0.003,
+        "output_1k_price": 0.015
+      },
+      "vision": true,
+      "document": true,
+      "tool": true,
+      "reasoning": {
+        "enabled": true,
+        "hybrid": true,
+        "budget_thinking_tokens": true,
+        "temperature_forced": 1
+      }
+    },
+    "DeepSeek V3": {
+      "id": "deepseek.v3-v1:0",
+      "cost": {
+        "input_1k_price": 0.0008,
+        "output_1k_price": 0.0032
+      },
+      "vision": false,
+      "document": true,
+      "tool": false,
+      "reasoning": {
+        "enabled": true,
+        "openai_reasoning_modalities": true
+      }
     },
     "Claude Sonnet 3.5 New": {
       "system_prompt": "you are an assistant",
@@ -379,13 +428,77 @@ The Amazon CloudFront distribution is indicated in the following line: `Foundati
 
 ### Thinking/Reasoning Process
 
-For models that support thinking capabilities (like Claude 3.7 Sonnet):
+The application supports two distinct reasoning approaches based on the model type:
 
-1. The thinking process is enabled by default and displayed as a separate step below the main response
-2. You can toggle thinking on/off using the "Enable Thinking Process" switch in settings
-3. When thinking is enabled, temperature control is automatically disabled (as required by the API)
-4. You can adjust the reasoning budget (token limit for thinking) in the settings
-5. The thinking process works in both streaming and non-streaming modes
+#### Anthropic Claude Models (Standard Thinking)
+For models configured with `"reasoning": true` or `"reasoning": {"enabled": true}`:
+
+1. **UI Controls**: 
+   - Toggle thinking on/off using the "Enable Thinking Process" switch
+   - Adjustable reasoning budget (token limit for thinking process)
+   - Temperature control is automatically disabled when thinking is enabled
+   - "Interleaved Thinking" beta feature for Claude models with tool calls
+
+2. **Behavior**:
+   - Thinking content is **always** included in conversation history
+   - Supports signatures in reasoning content
+   - Works in both streaming and non-streaming modes
+   - Thinking is displayed as a separate "Thinking 🤔" step in the UI
+
+#### OpenAI-Style Reasoning Models
+For models configured with `"reasoning": {"enabled": true, "openai_reasoning_modalities": true}`:
+
+1. **UI Controls**:
+   - Thinking is **always enabled** (no toggle available)
+   - Reasoning effort selector (low/medium/high) instead of token budget
+   - Temperature and top_p are automatically set to 1.0
+   - No interleaved thinking option
+
+2. **Behavior**:
+   - Thinking content is **only** included in conversation history when tool calls are made
+   - No signature support in reasoning content
+   - For simple conversations without tools, reasoning is shown in UI but excluded from history
+   - This prevents conversation history bloat while preserving reasoning context for complex interactions
+
+#### Configuration Examples
+
+**Anthropic Claude Model:**
+```json
+"Claude 3.7 Sonnet": {
+  "id": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+  "reasoning": true,
+  // ... other config
+}
+```
+
+**OpenAI-Style Reasoning Model:**
+```json
+"DeepSeek V3": {
+  "id": "deepseek.v3-v1:0",
+  "tool": false,
+  "reasoning": {
+    "enabled": true,
+    "openai_reasoning_modalities": true
+  },
+  // ... other config
+}
+```
+
+**Note**: DeepSeek models currently have `tool` set to `false` as they require specific tool choice configurations that would force tool usage in all scenarios.
+
+**Advanced Anthropic Configuration:**
+```json
+"Claude Sonnet 4.5": {
+  "id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+  "reasoning": {
+    "enabled": true,
+    "hybrid": true,
+    "budget_thinking_tokens": true,
+    "temperature_forced": 1
+  },
+  // ... other config
+}
+```
 
 ## Clean Up
 

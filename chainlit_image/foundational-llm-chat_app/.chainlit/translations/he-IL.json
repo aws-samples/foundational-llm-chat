@@ -22,7 +22,8 @@
             "form": {
                 "email": {
                     "label": "\u05db\u05ea\u05d5\u05d1\u05ea \u05d0\u05d9\u05de\u05d9\u05d9\u05dc",
-                    "required": "\u05e9\u05d3\u05d4 \u05d4\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d4\u05d5\u05d0 \u05e9\u05d3\u05d4 \u05d7\u05d5\u05d1\u05d4"
+                    "required": "\u05e9\u05d3\u05d4 \u05d4\u05d0\u05d9\u05de\u05d9\u05d9\u05dc \u05d4\u05d5\u05d0 \u05e9\u05d3\u05d4 \u05d7\u05d5\u05d1\u05d4",
+                    "placeholder": "me@example.com"
                 },
                 "password": {
                     "label": "\u05e1\u05d9\u05e1\u05de\u05d4",
@@ -69,6 +70,11 @@
             "stop": "\u05e2\u05e6\u05d5\u05e8 \u05d4\u05e7\u05dc\u05d8\u05d4",
             "connecting": "\u05de\u05ea\u05d7\u05d1\u05e8"
         },
+        "commands": {
+            "button": "\u05db\u05dc\u05d9\u05dd",
+            "changeTool": "\u05e9\u05e0\u05d4 \u05db\u05dc\u05d9",
+            "availableTools": "\u05db\u05dc\u05d9\u05dd \u05d6\u05de\u05d9\u05e0\u05d9\u05dd"
+        },
         "fileUpload": {
             "dragDrop": "\u05d2\u05e8\u05d5\u05e8 \u05d5\u05e9\u05d7\u05e8\u05e8 \u05e7\u05d1\u05e6\u05d9\u05dd \u05db\u05d0\u05df",
             "browse": "\u05e2\u05d9\u05d9\u05df \u05d1\u05e7\u05d1\u05e6\u05d9\u05dd",
@@ -76,6 +82,10 @@
             "errors": {
                 "failed": "\u05d4\u05e2\u05dc\u05d0\u05d4 \u05e0\u05db\u05e9\u05dc\u05d4",
                 "cancelled": "\u05d4\u05e2\u05dc\u05d0\u05d4 \u05d1\u05d5\u05d8\u05dc\u05d4 \u05e9\u05dc"
+            },
+            "actions": {
+                "cancelUpload": "\u05d1\u05d9\u05d8\u05d5\u05dc \u05d4\u05e2\u05dc\u05d0\u05d4",
+                "removeAttachment": "\u05d4\u05e1\u05e8\u05ea \u05e7\u05d5\u05d1\u05e5 \u05de\u05e6\u05d5\u05e8\u05e3"
             }
         },
         "messages": {
@@ -95,7 +105,8 @@
                 "edit": "\u05e2\u05e8\u05d5\u05da \u05de\u05e9\u05d5\u05d1",
                 "dialog": {
                     "title": "\u05d4\u05d5\u05e1\u05e3 \u05ea\u05d2\u05d5\u05d1\u05d4",
-                    "submit": "\u05e9\u05dc\u05d7 \u05de\u05e9\u05d5\u05d1"
+                    "submit": "\u05e9\u05dc\u05d7 \u05de\u05e9\u05d5\u05d1",
+                    "yourFeedback": "\u05d4\u05de\u05e9\u05d5\u05d1 \u05e9\u05dc\u05da..."
                 },
                 "status": {
                     "updating": "\u05de\u05e2\u05d3\u05db\u05df",
@@ -109,7 +120,8 @@
             "show": "\u05d4\u05e6\u05d2 \u05d4\u05d9\u05e1\u05d8\u05d5\u05e8\u05d9\u05d4"
         },
         "settings": {
-            "title": "\u05e4\u05d0\u05e0\u05dc \u05d4\u05d2\u05d3\u05e8\u05d5\u05ea"
+            "title": "\u05e4\u05d0\u05e0\u05dc \u05d4\u05d2\u05d3\u05e8\u05d5\u05ea",
+            "customize": "\u05d4\u05ea\u05d0\u05dd \u05d0\u05d9\u05e9\u05d9\u05ea \u05d0\u05ea \u05d4\u05d2\u05d3\u05e8\u05d5\u05ea \u05d4\u05e6'\u05d0\u05d8 \u05e9\u05dc\u05da \u05db\u05d0\u05df"
         },
         "watermark": "\u05de\u05d5\u05d3\u05dc\u05d9 \u05e9\u05e4\u05d4 \u05d2\u05d3\u05d5\u05dc\u05d9\u05dd \u05e2\u05dc\u05d5\u05dc\u05d9\u05dd \u05dc\u05e2\u05e9\u05d5\u05ea \u05d8\u05e2\u05d5\u05d9\u05d5\u05ea. \u05db\u05d3\u05d0\u05d9 \u05dc\u05d1\u05d3\u05d5\u05e7 \u05de\u05d9\u05d3\u05e2 \u05d7\u05e9\u05d5\u05d1."
     },
@@ -135,10 +147,24 @@
         "thread": {
             "untitled": "\u05e9\u05d9\u05d7\u05d4 \u05dc\u05dc\u05d0 \u05db\u05d5\u05ea\u05e8\u05ea",
             "menu": {
-                "rename": "Rename",
+                "rename": "\u05e9\u05d9\u05e0\u05d5\u05d9 \u05e9\u05dd",
+                "share": "\u05e9\u05d9\u05ea\u05d5\u05e3",
                 "delete": "Delete"
             },
             "actions": {
+                "share": {
+                    "title": "\u05e9\u05d9\u05ea\u05d5\u05e3 \u05e7\u05d9\u05e9\u05d5\u05e8 \u05dc\u05e9\u05d9\u05d7\u05d4",
+                    "button": "\u05e9\u05d9\u05ea\u05d5\u05e3",
+                    "status": {
+                        "copied": "\u05d4\u05e7\u05d9\u05e9\u05d5\u05e8 \u05d4\u05d5\u05e2\u05ea\u05e7",
+                        "created": "\u05e7\u05d9\u05e9\u05d5\u05e8 \u05d4\u05e9\u05d9\u05ea\u05d5\u05e3 \u05e0\u05d5\u05e6\u05e8!",
+                        "unshared": "\u05d4\u05e9\u05d9\u05ea\u05d5\u05e3 \u05d1\u05d5\u05d8\u05dc \u05e2\u05d1\u05d5\u05e8 \u05e9\u05d9\u05d7\u05d4 \u05d6\u05d5"
+                    },
+                    "error": {
+                        "create": "\u05d9\u05e6\u05d9\u05e8\u05ea \u05e7\u05d9\u05e9\u05d5\u05e8 \u05d4\u05e9\u05d9\u05ea\u05d5\u05e3 \u05e0\u05db\u05e9\u05dc\u05d4",
+                        "unshare": "\u05d1\u05d9\u05d8\u05d5\u05dc \u05d4\u05e9\u05d9\u05ea\u05d5\u05e3 \u05e9\u05dc \u05d4\u05e9\u05d9\u05d7\u05d4 \u05e0\u05db\u05e9\u05dc"
+                    }
+                },
                 "delete": {
                     "title": "\u05d0\u05e9\u05e8 \u05de\u05d7\u05d9\u05e7\u05d4",
                     "description": "\u05e4\u05e2\u05d5\u05dc\u05d4 \u05d6\u05d5 \u05ea\u05de\u05d7\u05e7 \u05d0\u05ea \u05d4\u05e9\u05d9\u05d7\u05d4 \u05d5\u05db\u05df \u05d0\u05ea \u05d4\u05d4\u05d5\u05d3\u05e2\u05d5\u05ea \u05d5\u05d4\u05d0\u05dc\u05de\u05e0\u05d8\u05d9\u05dd \u05e9\u05dc\u05d4. \u05dc\u05d0 \u05e0\u05d9\u05ea\u05df \u05dc\u05d1\u05d8\u05dc \u05e4\u05e2\u05d5\u05dc\u05d4 \u05d6\u05d5",
@@ -210,5 +236,10 @@
         "security": "Security",
         "beta": "Beta",
         "best-practice": "Best Practice"
+    },
+    "components": {
+        "MultiSelectInput": {
+            "placeholder": "\u05d1\u05d7\u05e8..."
+        }
     }
 }

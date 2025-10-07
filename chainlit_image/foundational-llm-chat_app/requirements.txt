@@ -1,6 +1,6 @@
 # we pin requirements to avoid breaking changes with packages updates
-chainlit==2.6.6
+chainlit==2.8.3
 # for Datapersistance but it is not working
 # aiohttp==3.11.13
-boto3==1.40.5
+boto3==1.40.46
 pillow==11.3.0

@@ -890,10 +890,23 @@ async def handle_non_streaming_response(response, msg, model_info):
     # Clean up excessive whitespace while preserving intentional formatting
     if '\n\n\n' in text:
         text = re.sub(r'\n{3,}', '\n\n', text)
-    msg.content = text
+    
+    # Handle message content based on what the model provided
+    if text.strip():
+        # Model provided text response
+        msg.content = text
+    elif tool_calls:
+        # Model only used thinking + tool calls, provide a helpful placeholder
+        msg.content = "🔧 *Using tools to help answer your question...*"
+        logger.debug("Model only used thinking + tool calls, using placeholder text")
+    else:
+        # Fallback for any other case
+        msg.content = text
     
     # Handle tool calls if present
     if tool_calls and stop_reason == 'tool_use':
+        # Make sure the message is updated with placeholder text before tool execution
+        await msg.update()
         await execute_tool_calls(tool_calls, msg, model_info, thinking_manager)
     
     # Only store message in history if we didn't have tool calls (tool calls handle their own storage)

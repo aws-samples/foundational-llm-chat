@@ -22,7 +22,8 @@
             "form": {
                 "email": {
                     "label": "Adresse e-mail",
-                    "required": "l'e-mail est un champ obligatoire"
+                    "required": "l'e-mail est un champ obligatoire",
+                    "placeholder": "me@example.com"
                 },
                 "password": {
                     "label": "Mot de passe",
@@ -64,6 +65,11 @@
                 "attachFiles": "Joindre des fichiers"
             }
         },
+        "commands": {
+            "button": "Outils",
+            "changeTool": "Changer d'outil",
+            "availableTools": "Outils disponibles"
+        },
         "speech": {
             "start": "D\u00e9marrer l'enregistrement",
             "stop": "Arr\u00eater l'enregistrement",
@@ -76,6 +82,10 @@
             "errors": {
                 "failed": "\u00c9chec du t\u00e9l\u00e9versement",
                 "cancelled": "T\u00e9l\u00e9versement annul\u00e9 de"
+            },
+            "actions": {
+                "cancelUpload": "Annuler le t\u00e9l\u00e9versement",
+                "removeAttachment": "Supprimer la pi\u00e8ce jointe"
             }
         },
         "messages": {
@@ -95,7 +105,8 @@
                 "edit": "Modifier le commentaire",
                 "dialog": {
                     "title": "Ajouter un commentaire",
-                    "submit": "Envoyer le commentaire"
+                    "submit": "Envoyer le commentaire",
+                    "yourFeedback": "Votre avis..."
                 },
                 "status": {
                     "updating": "Mise \u00e0 jour",
@@ -109,7 +120,8 @@
             "show": "Afficher l'historique"
         },
         "settings": {
-            "title": "Panneau des param\u00e8tres"
+            "title": "Panneau des param\u00e8tres",
+            "customize": "Personnalisez vos param\u00e8tres de chat ici"
         },
         "watermark": "Construit avec"
     },
@@ -136,9 +148,23 @@
             "untitled": "Conversation sans titre",
             "menu": {
                 "rename": "Renommer",
+                "share": "Partager",
                 "delete": "Supprimer"
             },
             "actions": {
+                "share": {
+                    "title": "Partager le lien de la discussion",
+                    "button": "Partager",
+                    "status": {
+                        "copied": "Lien copi\u00e9",
+                        "created": "Lien de partage cr\u00e9\u00e9 !",
+                        "unshared": "Partage d\u00e9sactiv\u00e9 pour ce fil"
+                    },
+                    "error": {
+                        "create": "\u00c9chec de la cr\u00e9ation du lien de partage",
+                        "unshare": "\u00c9chec de la d\u00e9sactivation du partage du fil"
+                    }
+                },
                 "delete": {
                     "title": "Confirmer la suppression",
                     "description": "Cela supprimera le fil de discussion ainsi que ses messages et \u00e9l\u00e9ments. Cette action ne peut pas \u00eatre annul\u00e9e",
@@ -210,5 +236,10 @@
         "security": "S\u00e9curit\u00e9",
         "beta": "B\u00eata",
         "best-practice": "Meilleure pratique"
+    },
+    "components": {
+        "MultiSelectInput": {
+            "placeholder": "S\u00e9lectionner..."
+        }
     }
 }
