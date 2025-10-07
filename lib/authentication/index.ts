@@ -22,31 +22,36 @@ export class Cognito extends Construct {
     super(scope, id);
 
     // Create a new Cognito User Pool
-    this.userPool = new cognito.UserPool(this, "foundational-llm-chat_user_pool", {
-      userPoolName: `${props.prefix}foundational-llm-chat-user-pool`,
-      signInCaseSensitive: false, // Sign-in is not case-sensitive
-      signInAliases: {
-        email: true, // Allow sign-in with email
+    this.userPool = new cognito.UserPool(
+      this,
+      "foundational-llm-chat_user_pool",
+      {
+        userPoolName: `${props.prefix}foundational-llm-chat-user-pool`,
+        signInCaseSensitive: false, // Sign-in is not case-sensitive
+        signInAliases: {
+          email: true, // Allow sign-in with email
+        },
+        accountRecovery: cognito.AccountRecovery.NONE, // No account recovery mechanism
+        mfa: cognito.Mfa.REQUIRED, // Multi-Factor Authentication (MFA) is required
+        mfaSecondFactor: {
+          sms: false, // SMS-based MFA is not allowed
+          otp: true, // One-Time Password (OTP) MFA is allowed
+        },
+        featurePlan: cognito.FeaturePlan.PLUS,
+        standardThreatProtectionMode:
+          cognito.StandardThreatProtectionMode.FULL_FUNCTION, // https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pool-settings-advanced-security.html
+        //  adds security feature but costs more than plain cognito.
+        passwordPolicy: {
+          minLength: 8, // Minimum length of password is 8 characters
+          requireDigits: true, // Require at least one digit in password
+          requireLowercase: true, // Require at least one lowercase letter in password
+          requireSymbols: true, // Require at least one symbol in password
+          requireUppercase: true, // Require at least one uppercase letter in password
+          tempPasswordValidity: Duration.days(3),
+        },
+        removalPolicy: RemovalPolicy.DESTROY, // Destroy when the stack is deleted
       },
-      accountRecovery: cognito.AccountRecovery.NONE, // No account recovery mechanism
-      mfa: cognito.Mfa.REQUIRED, // Multi-Factor Authentication (MFA) is required
-      mfaSecondFactor: {
-        sms: false, // SMS-based MFA is not allowed
-        otp: true, // One-Time Password (OTP) MFA is allowed
-      },
-      featurePlan: cognito.FeaturePlan.PLUS,
-      standardThreatProtectionMode: cognito.StandardThreatProtectionMode.FULL_FUNCTION, // https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pool-settings-advanced-security.html
-      //  adds security feature but costs more than plain cognito.
-      passwordPolicy: {
-        minLength: 8, // Minimum length of password is 8 characters
-        requireDigits: true, // Require at least one digit in password
-        requireLowercase: true, // Require at least one lowercase letter in password
-        requireSymbols: true, // Require at least one symbol in password
-        requireUppercase: true, // Require at least one uppercase letter in password
-        tempPasswordValidity: Duration.days(3),
-      },
-      removalPolicy: RemovalPolicy.DESTROY, // Destroy when the stack is deleted
-    });
+    );
 
     // Create a new Cognito User Pool Client for the application
     this.client = this.userPool.addClient("FoundationalLlmChatApp", {
@@ -60,7 +65,9 @@ export class Cognito extends Construct {
           cognito.OAuthScope.PHONE, // Include phone number scope
           cognito.OAuthScope.PROFILE, // Include profile scope
         ],
-        callbackUrls: [`https://${props.cloudFrontDistribution.distributionDomainName}/auth/oauth/aws-cognito/callback`], // Callback URL for OAuth flow
+        callbackUrls: [
+          `https://${props.cloudFrontDistribution.distributionDomainName}/auth/oauth/aws-cognito/callback`,
+        ], // Callback URL for OAuth flow
       },
       generateSecret: true, // Generate a client secret
       userPoolClientName: `${props.prefix}FoundationalLlmChatApp`, // Client name
@@ -68,11 +75,15 @@ export class Cognito extends Construct {
     });
 
     // Store the client secret
-    this.oauth_cognito_client_secret = new secretsmanager.Secret(this, "CognitoSecret", {
-      secretName: `${props.prefix}oauth_cognito_client_secret`,
-      description: "to store env variable of ECS as secrets",
-      secretStringValue: this.client.userPoolClientSecret
-    });
+    this.oauth_cognito_client_secret = new secretsmanager.Secret(
+      this,
+      "CognitoSecret",
+      {
+        secretName: `${props.prefix}oauth_cognito_client_secret`,
+        description: "to store env variable of ECS as secrets",
+        secretStringValue: this.client.userPoolClientSecret,
+      },
+    );
 
     let cognitoDomainUrl: string;
     if (props.cognito_domain === undefined || props.cognito_domain === "") {
@@ -82,21 +93,24 @@ export class Cognito extends Construct {
           domainPrefix: `${props.prefix.toLowerCase()}foundational-llm-chat${Math.floor(Math.random() * (10000 - 100) + 100)}`, // Domain prefix for the Cognito domain
         },
       });
-      cognitoDomainUrl = cognitoDomain.baseUrl().replace("https://", "")
-    }
-    else {
-      cognitoDomainUrl = props.cognito_domain
+      cognitoDomainUrl = cognitoDomain.baseUrl().replace("https://", "");
+    } else {
+      cognitoDomainUrl = props.cognito_domain;
     }
 
-    this.cognitoDomainParameter = new ssm.StringParameter(this, 'CognitoDomainName', {
-      description: 'Cognito domain name',
-      parameterName: `${props.prefix.toLowerCase()}CognitoDomainName`,
-      stringValue: cognitoDomainUrl, // Use the Cognito domain from Cognito (without https://),
-      tier: ssm.ParameterTier.STANDARD,
-    });
+    this.cognitoDomainParameter = new ssm.StringParameter(
+      this,
+      "CognitoDomainName",
+      {
+        description: "Cognito domain name",
+        parameterName: `${props.prefix.toLowerCase()}CognitoDomainName`,
+        stringValue: cognitoDomainUrl, // Use the Cognito domain from Cognito (without https://),
+        tier: ssm.ParameterTier.STANDARD,
+      },
+    );
 
-    this.clientIdParameter = new ssm.StringParameter(this, 'cognitoClientid', {
-      description: 'Cognito client id',
+    this.clientIdParameter = new ssm.StringParameter(this, "cognitoClientid", {
+      description: "Cognito client id",
       parameterName: `${props.prefix.toLowerCase()}cognitoClientid`,
       stringValue: this.client.userPoolClientId,
       tier: ssm.ParameterTier.STANDARD,
@@ -109,4 +123,3 @@ export class Cognito extends Construct {
     });
   }
 }
-
