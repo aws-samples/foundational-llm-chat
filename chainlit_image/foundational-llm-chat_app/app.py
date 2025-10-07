@@ -168,8 +168,12 @@ async def generate_conversation(bedrock_client=None, model_id=None, input_text=N
         model_info = bedrock_models[chat_profile] if chat_profile else {}
         reasoning_config = model_info.get("reasoning", {})
         
+        # Check if model has reasoning always enabled at model level (no API params needed)
+        if isinstance(reasoning_config, dict) and reasoning_config.get("no_reasoning_params"):
+            logger.debug("Model has reasoning always enabled - not sending any reasoning parameters")
+            # Don't add any reasoning parameters to additional_model_fields
         # Check if this is an OpenAI reasoning model
-        if isinstance(reasoning_config, dict) and reasoning_config.get("openai_reasoning_modalities"):
+        elif isinstance(reasoning_config, dict) and reasoning_config.get("openai_reasoning_modalities"):
             # Use OpenAI reasoning config format
             reasoning_effort = cl.user_session.get("reasoning_effort", "medium")
             additional_model_fields["reasoning_config"] = reasoning_effort
@@ -213,16 +217,26 @@ async def generate_conversation(bedrock_client=None, model_id=None, input_text=N
     chat_profile = cl.user_session.get("chat_profile")
     logger.debug(f"Calling {chat_profile} with {len(api_message_history)} messages")
     
+    # Prepare API call parameters
+    api_params = {
+        "modelId": model_id,
+        "messages": api_message_history,
+        "inferenceConfig": inference_config,
+        "additionalModelRequestFields": additional_model_fields
+    }
+    
+    # Only add system prompt if it's not empty
+    system_prompt = cl.user_session.get("system_prompt")
+    if system_prompt and system_prompt[0].get("text", "").strip():
+        api_params["system"] = system_prompt
+    
+    # Only add toolConfig if it's not None
+    if tool_config is not None:
+        api_params["toolConfig"] = tool_config
+    
     if cl.user_session.get("streaming"):
         try: 
-            return bedrock_client.converse_stream(
-                modelId=model_id,
-                messages=api_message_history,
-                system=cl.user_session.get("system_prompt"),
-                inferenceConfig=inference_config,
-                additionalModelRequestFields=additional_model_fields,
-                toolConfig=tool_config
-            )
+            return bedrock_client.converse_stream(**api_params)
         except ClientError as err:
             message = err.response["Error"]["Message"]
             logger.error("A client error occurred: %s", message)
@@ -230,14 +244,7 @@ async def generate_conversation(bedrock_client=None, model_id=None, input_text=N
                 format(message))
     else:
         try:
-            return bedrock_client.converse(
-                modelId=model_id,
-                messages=api_message_history,
-                system=cl.user_session.get("system_prompt"),
-                inferenceConfig=inference_config,
-                additionalModelRequestFields=additional_model_fields,
-                toolConfig=tool_config
-            )
+            return bedrock_client.converse(**api_params)
         except ClientError as err:
             message = err.response["Error"]["Message"]
             logger.error("A client error occurred: %s", message)
@@ -538,9 +545,10 @@ async def start():
         print("A client error occured: " +
               format(message))
     # Initialize system prompt
-    system_prompt = ""
+    # Initialize system prompt - start with model-specific or empty
+    system_prompt = model_info.get("system_prompt", "")
     
-    # Try to get system prompt if available
+    # Try to get system prompt from Bedrock Prompt Manager if available
     if chat_profile in system_prompt_list:
         try:
             bedrock_agent_client_config = Config(**aws_config)
@@ -552,15 +560,18 @@ async def start():
             )
             
             # Use the extract_and_process_prompt function to handle the prompt structure
-            system_prompt = extract_and_process_prompt(system_prompt_object)
-            if system_prompt:
-                logger.debug(f"Loaded system prompt for {chat_profile}: {system_prompt[:50]}...")
+            prompt_from_manager = extract_and_process_prompt(system_prompt_object)
+            if prompt_from_manager:
+                system_prompt = prompt_from_manager
+                logger.debug(f"Loaded system prompt from Prompt Manager for {chat_profile}: {system_prompt[:50]}...")
             else:
-                logger.warning(f"Failed to extract system prompt for {chat_profile}")
+                logger.warning(f"Failed to extract system prompt from Prompt Manager for {chat_profile}")
         except Exception as e:
-            logger.error(f"Error getting system prompt: {e}")
-    else:
-        logger.debug(f"No system prompt defined for {chat_profile}")
+            logger.error(f"Error getting system prompt from Prompt Manager: {e}")
+    
+    # If still no prompt, log it
+    if not system_prompt or not system_prompt.strip():
+        logger.debug(f"No system prompt available for {chat_profile}")
         
     cl.user_session.set(
         "system_prompt",

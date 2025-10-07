@@ -144,26 +144,57 @@ export class ecsApplication extends Construct {
     ) => {
       const arns: string[] = [];
 
-      // Handle region list
-      if (Array.isArray(model.region)) {
-        model.region.forEach((region) => {
-          const modelId = model.inference_profile
-            ? model.id.replace(`${model.inference_profile.prefix}.`, "")
-            : model.id;
-          arns.push(`arn:aws:bedrock:${region}::foundation-model/${modelId}`);
-        });
-      } else {
-        // If no region list, use the default region
-        arns.push(
-          `arn:aws:bedrock:${defaultRegion}::foundation-model/${model.id}`,
-        );
-      }
+      // Check if this is a global inference profile
+      const isGlobalInferenceProfile = model.inference_profile?.global === true;
 
-      // Handle inference_profile
-      if (model.inference_profile) {
+      if (isGlobalInferenceProfile) {
+        // For global inference profiles, we need MULTIPLE ARN formats:
+
+        // 1. Foundation model ARN without region (:::) - with global. prefix
+        arns.push(`arn:aws:bedrock:::foundation-model/${model.id}`);
+
+        // 2. Foundation model ARN without region (:::) - without global. prefix
+        const baseModelId = model.id.replace("global.", "");
+        arns.push(`arn:aws:bedrock:::foundation-model/${baseModelId}`);
+
+        // 3. Foundation model ARNs for ALL regions (with base model ID, without global. prefix)
+        // The model can be invoked from any region, so we need permissions for all
+        if (Array.isArray(model.region)) {
+          model.region.forEach((region) => {
+            arns.push(
+              `arn:aws:bedrock:${region}::foundation-model/${baseModelId}`,
+            );
+          });
+        }
+
+        // 4. Inference profile ARN with region and account
+        const inferenceRegion =
+          model.inference_profile?.region || defaultRegion;
         arns.push(
-          `arn:aws:bedrock:${model.inference_profile.region}:${accountId}:inference-profile/${model.id}`,
+          `arn:aws:bedrock:${inferenceRegion}:${accountId}:inference-profile/${model.id}`,
         );
+      } else {
+        // Handle region list for non-global models
+        if (Array.isArray(model.region)) {
+          model.region.forEach((region) => {
+            const modelId = model.inference_profile
+              ? model.id.replace(`${model.inference_profile.prefix}.`, "")
+              : model.id;
+            arns.push(`arn:aws:bedrock:${region}::foundation-model/${modelId}`);
+          });
+        } else {
+          // If no region list, use the default region
+          arns.push(
+            `arn:aws:bedrock:${defaultRegion}::foundation-model/${model.id}`,
+          );
+        }
+
+        // Handle inference_profile for non-global models
+        if (model.inference_profile) {
+          arns.push(
+            `arn:aws:bedrock:${model.inference_profile.region}:${accountId}:inference-profile/${model.id}`,
+          );
+        }
       }
 
       return arns;

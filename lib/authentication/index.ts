@@ -86,15 +86,30 @@ export class Cognito extends Construct {
     );
 
     let cognitoDomainUrl: string;
+
+    // IMPORTANT: To prevent domain deletion when updating the stack:
+    // - On first deployment: leave cognito_domain empty, CDK will create the domain
+    // - On subsequent deployments: KEEP cognito_domain empty to maintain the domain
+    // - Only fill cognito_domain if you're migrating from an external domain
+    //
+    // The cognito_domain parameter exists to handle the CDK bug where updating
+    // the stack tries to recreate the domain (causing "domain already exists" error).
+    // By providing the domain name, we tell CDK to skip domain creation.
+
     if (props.cognito_domain === undefined || props.cognito_domain === "") {
       // Create a Cognito User Pool Domain
       const cognitoDomain = this.userPool.addDomain("CognitoDomain", {
         cognitoDomain: {
-          domainPrefix: `${props.prefix.toLowerCase()}foundational-llm-chat${Math.floor(Math.random() * (10000 - 100) + 100)}`, // Domain prefix for the Cognito domain
+          domainPrefix: `${props.prefix.toLowerCase()}foundational-llm-chat${Math.floor(Math.random() * (10000 - 100) + 100)}`,
         },
       });
       cognitoDomainUrl = cognitoDomain.baseUrl().replace("https://", "");
     } else {
+      // Use the provided domain URL
+      // WARNING: Changing from empty to filled will cause CloudFormation to DELETE
+      // the existing domain! Only use this if:
+      // 1. You're doing a fresh deployment with an existing domain, OR
+      // 2. You've manually created the domain in AWS Console
       cognitoDomainUrl = props.cognito_domain;
     }
 

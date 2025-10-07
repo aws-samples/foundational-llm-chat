@@ -6,6 +6,46 @@ export interface InferenceProfile {
   global?: boolean;
 }
 
+/**
+ * Reasoning configuration for models that support thinking/reasoning capabilities.
+ *
+ * Supports two formats:
+ * 1. Simple boolean: true/false - Enables/disables standard Anthropic-style reasoning
+ * 2. Extended object with detailed configuration options
+ */
+export interface ReasoningConfig {
+  enabled: boolean;
+  /**
+   * Enables OpenAI-style reasoning behavior (uses effort levels instead of token budgets)
+   * When true, the UI shows reasoning effort selector (low/medium/high)
+   * When false or omitted, the UI shows token budget slider
+   */
+  openai_reasoning_modalities?: boolean;
+  /**
+   * Prevents sending ANY reasoning parameters to the API
+   * Use this for models where reasoning is always enabled at the model level
+   * and cannot be controlled via API parameters (e.g., DeepSeek R1)
+   * When true, the app will:
+   * - Show reasoning in the UI (always on, no toggle)
+   * - NOT send any additionalModelRequestFields for reasoning
+   * - Still process reasoningContent from the response
+   */
+  no_reasoning_params?: boolean;
+  /**
+   * Supports hybrid reasoning modes (Anthropic-specific)
+   */
+  hybrid?: boolean;
+  /**
+   * Supports configurable token budgets for thinking process (Anthropic-specific)
+   */
+  budget_thinking_tokens?: boolean;
+  /**
+   * Forces specific temperature when reasoning is enabled (Anthropic-specific)
+   * Typically set to 1 to allow full model creativity during reasoning
+   */
+  temperature_forced?: number;
+}
+
 export interface BedrockModel {
   system_prompt?: string;
   id: string;
@@ -20,7 +60,21 @@ export interface BedrockModel {
   vision?: boolean;
   document?: boolean;
   tool?: boolean;
-  reasoning?: boolean;
+  streaming?: boolean;
+  /**
+   * Reasoning/thinking capability configuration.
+   *
+   * Can be:
+   * - boolean: true/false for simple enable/disable (standard Anthropic-style)
+   * - ReasoningConfig object: for detailed configuration with multiple options
+   *
+   * Examples:
+   * - "reasoning": false - No reasoning support
+   * - "reasoning": true - Standard Anthropic reasoning with token budgets
+   * - "reasoning": { "enabled": true, "openai_reasoning_modalities": true } - OpenAI-style with effort levels
+   * - "reasoning": { "enabled": true, "hybrid": true, "budget_thinking_tokens": true, "temperature_forced": 1 } - Full Anthropic config
+   */
+  reasoning?: boolean | ReasoningConfig;
 }
 
 export interface BedrockModels {
@@ -66,6 +120,7 @@ export function getConfig(): SystemConfig {
         vision: true,
         document: true,
         tool: true,
+        streaming: true,
         reasoning: false,
       },
     },

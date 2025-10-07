@@ -35,54 +35,56 @@ Foundational LLM Chat is a Chainlit application built using AWS CDK and Converse
 
 - 🌐 Support for all text generation models in Amazon Bedrock through Converse API, including:
   - 🤖 Anthropic Claude models:
-    - Claude Opus 4
-    - Claude Sonnet 4
-    - Claude 3 Opus
-    - Claude 3 Sonnet
-    - Claude 3.5 Sonnet
-    - Claude 3.7 Sonnet (with thinking capabilities)
-    - Claude 3 Haiku
-    - Claude 3.5 Haiku
+    - Claude Opus 4, Claude Sonnet 4, Claude Sonnet 4.5
+    - Claude 3 Opus, Claude 3 Sonnet, Claude 3.5 Sonnet
+    - Claude 3.7 Sonnet (with extended thinking capabilities)
+    - Claude 3 Haiku, Claude 3.5 Haiku
   - 🦙 Meta Llama models:
-    - Llama 3.1 (8B, 70B)
-    - Llama 3.2 (1B, 3B, 11B Vision, 90B Vision)
-    - Llama 4
-  - 🌟 Mistral models
-  - 🤖 Amazon Nova models
-  - 🔵 AI21 Jurassic models
-  - 🎯 Cohere Command models
+    - Llama 3.1 (8B, 70B), Llama 3.2 (1B, 3B, 11B Vision, 90B Vision), Llama 3.3 (70B)
+    - Llama 4 (Scout, Maverick variants)
+  - 🌟 Mistral models (including Pixtral Large with vision)
+  - 🤖 Amazon Nova models (Micro, Lite, Pro, Premier)
+  - 🧠 DeepSeek models (V3, R1 with reasoning)
+  - 🔵 Qwen models (multiple variants including Coder)
+  - ✍️ Writer Palmyra models
+  - 🔓 OpenAI GPT OSS models
   - And any new text generation model added to Amazon Bedrock
 - 🖼️ Multi-modal capabilities (for vision-enabled models)
-- 🧠 Thinking/reasoning process visualization (for supported models)
+- 🧠 Dual reasoning approaches:
+  - Standard thinking process (Anthropic-style with token budgets)
+  - OpenAI-style reasoning (with effort levels: low/medium/high)
 - 📄 Document analysis through Amazon Bedrock Converse API
-- 🛠️ Tool integration capabilities through Converse API
-- 🌍 Optional cross-region inference support
+- 🛠️ MCP (Model Context Protocol) integration for tool calling
+- 🌍 Cross-region inference and global inference profiles support
 - 📝 Prompt management and versioning through Amazon Bedrock Prompt Manager
 - 🔐 Secure authentication with AWS Cognito
 - 🚀 Scalable deployment using AWS ECS and Fargate
 - 🌐 Global distribution with AWS CloudFront
 - 🔄 Sticky sessions for consistent user experience
 - 💰 Detailed cost tracking for model usage
-- 🎚️ Configure temperature, max tokens, reasoning budget, and other settings
-- 🔄 Support for both streaming and non-streaming modes
+- 🎚️ Configure temperature, max tokens, reasoning budget/effort, and other settings
+- 🔄 Support for both streaming and non-streaming modes (configurable per model)
 
 ## Architecture
 
 The application leverages several Amazon Bedrock features:
+
 - Converse API for enhanced document and vision processing
-- Cross-region inference using instance profiles
-- Prompt management for versioning and governance
+- Cross-region inference using inference profiles
+- Global inference profiles for worldwide model access
+- Prompt Manager for centralized prompt versioning and governance
 - Multi-model support across different providers
 
 ![Foundational LLM Chat Architecture](/assets/Foundational-LLM-Chat.svg)
 
-The architecture diagram illustrates the AWS deployment of the Foundational LLM Chat application. Users interact with the application through a web interface secured by Amazon Cognito authentication. The application is globally distributed using Amazon CloudFront's CDN. Within a specific AWS region, the application is deployed across multiple Availability Zones using Amazon ECS for containerized deployment. The backend integrates with Amazon Bedrock to leverage various language models, enabling users to engage in multimodal conversations with the AI assistant.
+The architecture diagram illustrates the AWS deployment of the Foundational LLM Chat application. Users interact with the application through a web interface secured by Amazon Cognito authentication. The application is globally distributed using Amazon CloudFront's CDN. Within a specific AWS region, the application is deployed across multiple Availability Zones using Amazon ECS for containerized deployment. The backend integrates with Amazon Bedrock to leverage various language models, enabling users to engage in multimodal conversations with the AI assistant. All system prompts are managed through Amazon Bedrock Prompt Manager for version control and centralized management.
 
 ## Configuration
 
 The application is configured through a `config.json` file in the `./bin` folder. Key configuration options include:
 
 ### General Settings
+
 1. **`default_system_prompt`**: This field contains the default system prompt that will be used by the chatbot if not specified below in the `bedrock_models` field. It defines the initial instructions and behavior of the AI assistant. You can modify this value to change the assistant's persona or initial prompt.
 
 2. **`max_characters_parameter`**: This field specifies the maximum number of characters allowed in the input text. If set to the string `"None"`, there is no character limit. You can change this value to limit the input text length if desired.
@@ -93,40 +95,161 @@ The application is configured through a `config.json` file in the `./bin` folder
 
 5. **`prefix`**: This field allows you to set a prefix for resource names created by the application. You can leave it empty or provide a custom prefix if desired.
 
-6. **`cognito_domain`**: This field allows you to specify an already existent cognito domain name. It is *optional* and in the first deployement is expected to not be defined. See FAQ section for the reason of this parameter existance.
+6. **`cognito_domain`**: This field allows you to specify an already existent cognito domain name. It is _optional_ and in the first deployement is expected to not be defined. See FAQ section for the reason of this parameter existance.
 
 ### Model Configuration
-This field contains a dictionary of Bedrock models that the chatbot can use. Each model is identified by a *key* (e.g., "Sonnet", "Haiku") and, the *key* is the name used in the Chainlit [Chatprofile](https://docs.chainlit.io/advanced-features/chat-profiles). Each model has the following properties at minimum:
-   - **`id`**: The ID or ARN of the Amazon Bedrock model. You can find the available model IDs in the [AWS documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html#model-ids-arns).
-   - **`region`**: an array of regions used to access the model. One if you did not enable cross-region inference, multiple for cross region inference.
+
+This field contains a dictionary of Bedrock models that the chatbot can use. Each model is identified by a _key_ (e.g., "Sonnet", "Haiku") and, the _key_ is the name used in the Chainlit [Chatprofile](https://docs.chainlit.io/advanced-features/chat-profiles). Each model has the following properties at minimum:
+
+- **`id`**: The ID or ARN of the Amazon Bedrock model. You can find the available model IDs in the [AWS documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html#model-ids-arns).
+- **`region`**: an array of regions used to access the model. One if you did not enable cross-region inference, multiple for cross region inference.
 
 Optional configuration parameters include:
+
 - `inference_profile`: Settings for cross-region or global inference
   - `prefix`: Region prefix (e.g., "us") or "global" for global inference profiles
   - `region`: Primary inference region
-  - `global`: *[optional]* Set to `true` for global inference profiles (e.g., `global.anthropic.claude-sonnet-4-5-20250929-v1:0`)
+  - `global`: _[optional]_ Set to `true` for global inference profiles (e.g., `global.anthropic.claude-sonnet-4-5-20250929-v1:0`)
   - Note: Required only when using cross-region or global inference. Models must be enabled in all specified regions
-- `system_prompt`: Custom system prompt
+- `system_prompt`: Custom system prompt (overrides default_system_prompt for this model)
 - `cost`: Pricing information
   - **`input_1k_price`**: The cost (in USD) for 1,000 input tokens. You can find the pricing information for different models on the [AWS Bedrock pricing page](https://aws.amazon.com/bedrock/pricing/).
-     - **`output_1k_price`**: The cost (in USD) for 1,000 output tokens.
+  - **`output_1k_price`**: The cost (in USD) for 1,000 output tokens.
 - Capability flags:
-   - **`vision`** *[optional]*: true or false. If vision capabilities [are enabled](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html) for the model.
-   - **`document`** *[optional]*: true or false. If document capabilities are enabled](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html) for the model.
-   - **`tool`** *[optional]*: true or false. If tools capabilities are enabled](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html) for the model.
-   - **`reasoning`** *[optional]*: Configures thinking/reasoning capabilities. Supports two formats:
-     - **Legacy format**: `true` or `false` (boolean) - Enables standard Anthropic-style reasoning
-     - **Extended format**: Object with detailed configuration:
-       - `"enabled": true` - Whether reasoning is supported
-       - `"openai_reasoning_modalities": true` - Enables OpenAI-style reasoning behavior
-       - `"hybrid": true` - *[optional]* Supports hybrid reasoning modes
-       - `"budget_thinking_tokens": true` - *[optional]* Supports configurable token budgets
-       - `"temperature_forced": 1` - *[optional]* Forces specific temperature when reasoning is enabled
-- **`default`** *[optional]*: true or false. The default selected model
+  - **`vision`** _[optional]_: true or false. If vision capabilities [are enabled](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html) for the model.
+  - **`document`** _[optional]_: true or false. If document capabilities [are enabled](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html) for the model.
+  - **`tool`** _[optional]_: true or false. If tools capabilities [are enabled](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html) for the model.
+  - **`streaming`** _[optional]_: true or false. If streaming is supported for the model. Defaults to true if not specified.
+  - **`reasoning`** _[optional]_: Configures thinking/reasoning capabilities. Supports three formats:
+    - **Boolean `false`**: Disables reasoning completely (default for most models)
+    - **Boolean `true`**: Enables standard Anthropic-style reasoning with token budgets
+    - **Extended object**: Detailed configuration with the following properties:
+      - `"enabled": true` - **Required** when using object format. Whether reasoning is supported
+      - `"openai_reasoning_modalities": true` - _[optional]_ Enables OpenAI-style reasoning behavior:
+        - Uses reasoning effort levels (low/medium/high) instead of token budgets
+        - Automatically sets temperature and top_p to 1.0
+        - Only includes thinking in conversation history when tools are used
+        - Used by models like DeepSeek V3, OpenAI GPT OSS, and some Qwen models
+      - `"no_reasoning_params": true` - _[optional]_ Prevents sending ANY reasoning parameters to the API:
+        - Use for models where reasoning is always enabled at the model level (e.g., DeepSeek R1)
+        - The app will NOT send additionalModelRequestFields for reasoning
+        - Reasoning will still be displayed in the UI (always on, no toggle)
+        - The app will still process reasoningContent from the response
+        - Must be combined with `"openai_reasoning_modalities": true` for proper response handling
+      - `"hybrid": true` - _[optional]_ Supports hybrid reasoning modes (Anthropic-specific)
+      - `"budget_thinking_tokens": true` - _[optional]_ Supports configurable token budgets for thinking (Anthropic-specific)
+      - `"temperature_forced": 1` - _[optional]_ Forces specific temperature when reasoning is enabled (typically 1 for full creativity)
+- **`maxTokens`** _[optional]_: Maximum tokens the model can generate. Used to set the slider range in the UI.
+- **`default`** _[optional]_: true or false. The default selected model
 
 You can modify the `bedrock_models` section to include additional models or update the existing ones according to your requirements.
 
-Here's an example of how to retrieve the model ID and pricing information:
+### Reasoning Parameter Examples
+
+The `reasoning` parameter controls how models handle thinking/reasoning processes. Here are real-world examples from the configuration:
+
+#### No Reasoning Support
+
+Most models don't support reasoning and should have `"reasoning": false`:
+
+```json
+"Claude 3.5 Haiku": {
+  "id": "us.anthropic.claude-3-5-haiku-20241022-v1:0",
+  "reasoning": false
+}
+```
+
+#### Simple Anthropic-Style Reasoning
+
+For models that support basic Anthropic thinking with token budgets, use `"reasoning": true`:
+
+```json
+"DeepSeek R1": {
+  "id": "us.deepseek.r1-v1:0",
+  "reasoning": true
+}
+```
+
+This enables:
+
+- Token budget slider (1024-64000 tokens)
+- Thinking always included in conversation history
+- Temperature disabled when thinking is active
+
+#### Advanced Anthropic-Style Reasoning
+
+For Claude models with extended thinking capabilities:
+
+```json
+"Claude 3.7 Sonnet": {
+  "id": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
+  "reasoning": {
+    "enabled": true,
+    "hybrid": true,
+    "budget_thinking_tokens": true,
+    "temperature_forced": 1
+  }
+}
+```
+
+This enables:
+
+- Token budget slider with hybrid mode support
+- Interleaved thinking option (beta) for tool calls
+- Temperature forced to 1 during reasoning
+- Full thinking context in conversation history
+
+#### OpenAI-Style Reasoning
+
+For models using OpenAI's reasoning approach (DeepSeek V3, OpenAI GPT OSS, Qwen models):
+
+```json
+"DeepSeek V3": {
+  "id": "deepseek.v3-v1:0",
+  "tool": false,
+  "reasoning": {
+    "enabled": true,
+    "openai_reasoning_modalities": true
+  }
+}
+```
+
+This enables:
+
+- Reasoning effort selector (low/medium/high) instead of token budget
+- Temperature and top_p automatically set to 1.0
+- Thinking only included in history when tools are used
+- Always-on reasoning (no toggle in UI)
+
+#### Model-Level Reasoning (Always On)
+
+For models where reasoning is built-in and cannot be controlled via API (DeepSeek R1):
+
+```json
+"DeepSeek R1": {
+  "id": "us.deepseek.r1-v1:0",
+  "tool": false,
+  "reasoning": {
+    "enabled": true,
+    "openai_reasoning_modalities": true,
+    "no_reasoning_params": true
+  }
+}
+```
+
+This configuration:
+
+- Tells the app reasoning is always enabled at the model level
+- Prevents sending ANY reasoning parameters to the API (avoids validation errors)
+- Still displays reasoning in the UI (always on, no toggle)
+- Processes `reasoningContent` from the response correctly
+- Uses OpenAI-style response handling (separate reasoning and text blocks)
+
+**Note**: Models with `"openai_reasoning_modalities": true` may have `"tool": false` if they require specific tool configurations that would force tool usage in all scenarios.
+
+### Model ID and Pricing Information
+
+Here's how to retrieve the model ID and pricing information:
 
 1. To find the model ID or ARN, refer to the [AWS Bedrock Model IDs documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/model-ids.html#model-ids-arns). For example, the ID for the Claude 3 Sonnet model is `anthropic.claude-3-sonnet-20240229-v1:0`.
 
@@ -137,6 +260,7 @@ Here's an example of how to retrieve the model ID and pricing information:
 After making the desired changes to the `config.json` file, you can proceed with the deployment as described in the README.
 
 Here an example of the json:
+
 ```json
 {
   "default_system_prompt": "you are an assistant",
@@ -148,15 +272,21 @@ Here an example of the json:
     "Claude 3.7 Sonnet": {
       "system_prompt": "you are an assistant",
       "id": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-      "region": ["us-west-2"],
+      "inference_profile": {
+        "prefix": "us",
+        "region": "us-west-2"
+      },
+      "region": ["us-west-2", "us-east-1", "us-east-2"],
       "cost": {
         "input_1k_price": 0.003,
         "output_1k_price": 0.015
       },
       "default": true,
+      "maxTokens": 64000,
       "vision": true,
       "document": true,
       "tool": true,
+      "streaming": true,
       "reasoning": {
         "enabled": true,
         "hybrid": true,
@@ -171,11 +301,18 @@ Here an example of the json:
         "region": "us-west-2",
         "global": true
       },
-      "region": ["us-east-1", "us-west-2", "us-east-2"],
+      "region": [
+        "us-east-1",
+        "us-west-2",
+        "us-east-2",
+        "eu-west-1",
+        "ap-southeast-1"
+      ],
       "cost": {
         "input_1k_price": 0.003,
         "output_1k_price": 0.015
       },
+      "maxTokens": 64000,
       "vision": true,
       "document": true,
       "tool": true,
@@ -188,13 +325,16 @@ Here an example of the json:
     },
     "DeepSeek V3": {
       "id": "deepseek.v3-v1:0",
+      "region": ["us-west-2"],
       "cost": {
         "input_1k_price": 0.0008,
         "output_1k_price": 0.0032
       },
+      "maxTokens": 8192,
       "vision": false,
       "document": true,
       "tool": false,
+      "streaming": true,
       "reasoning": {
         "enabled": true,
         "openai_reasoning_modalities": true
@@ -212,9 +352,11 @@ Here an example of the json:
         "input_1k_price": 0.003,
         "output_1k_price": 0.015
       },
+      "maxTokens": 8192,
       "vision": true,
       "document": true,
-      "tool": true
+      "tool": true,
+      "streaming": true
     },
     "Meta Llama 3.2 90B Vision Instruct": {
       "id": "us.meta.llama3-2-90b-instruct-v1:0",
@@ -227,58 +369,107 @@ Here an example of the json:
         "input_1k_price": 0.002,
         "output_1k_price": 0.002
       },
+      "maxTokens": 4096,
       "vision": true,
       "document": true,
-      "tool": true
+      "tool": true,
+      "streaming": true
     },
     "Mistral Large 2": {
       "id": "mistral.mistral-large-2407-v1:0",
+      "region": ["us-west-2"],
       "cost": {
         "input_1k_price": 0.003,
         "output_1k_price": 0.009
       },
+      "maxTokens": 4096,
       "vision": false,
       "document": true,
-      "tool": true
+      "tool": true,
+      "streaming": true
     }
   }
 }
-
 ```
+
 ### Prompt Management
+
 The application leverages Amazon Bedrock Prompt Manager for:
+
 - Version control of prompts
 - Higher length limits for prompts
 - Centralized prompt management
 - Simplified prompt deployment and updates
 
 ## Prompt Replacement
+
 Currently the application supports 2 automatic variable substitutions:
+
 - {{TODAY}}: will be replaced with `%Y-%m-%d` of the day;
 - {{UTC_TIME}}: will be replaced with `%Y-%m-%d %H:%M:%S UTC`
 
-you can edit the `extract_and_process_prompt` function inside `chainlit_image/foundational-llm-chat_app/massages_utils.py` to add more direct substitutions.
+you can edit the `extract_and_process_prompt` function inside `chainlit_image/foundational-llm-chat_app/utils/message_utils.py` to add more direct substitutions.
 
 ## Amazon Bedrock Integration
 
 ### Converse API
+
 The application uses Amazon Bedrock's Converse API, providing:
+
 - Unified interface for all Amazon Bedrock models
 - Built-in support for multi-modal interactions
 - Document processing capabilities
 - Tool integration framework
 
-### Cross-Region Support
-- Optional cross-region inference configuration
+### Cross-Region and Global Inference
+
+Amazon Bedrock offers two types of inference profiles for enhanced availability and performance:
+
+#### Cross-Region Inference Profiles
+
+- Route requests across multiple regions within a geographic area (e.g., "us" prefix for US regions)
+- Provides automatic failover and load balancing
 - Requires model enablement in all specified regions
-- Configurable through inference profiles in config.json
+- Example: `us.anthropic.claude-3-7-sonnet-20250219-v1:0` routes across US regions
+
+#### Global Inference Profiles
+
+- Route requests across AWS regions worldwide for maximum availability
+- Ideal for production workloads requiring high uptime
+- Uses "global" prefix in model ID
+- Example: `global.anthropic.claude-sonnet-4-5-20250929-v1:0`
+- Requires model access in all regions listed in the `region` array
+
+Configuration in `config.json`:
+
+```json
+"inference_profile": {
+  "prefix": "global",  // or "us", "eu", etc.
+  "region": "us-west-2",  // Primary region for API calls
+  "global": true  // Set to true for global profiles
+}
+```
+
+### MCP (Model Context Protocol) Integration
+
+The application supports MCP for tool calling capabilities:
+
+- Connect to MCP servers to extend model functionality
+- Automatic tool discovery and registration
+- Seamless integration with Bedrock Converse API
+- Support for multiple concurrent MCP connections
+- Tools are automatically available to models with `"tool": true` capability
 
 ### Prompt Management
+
 All system prompts are stored and managed through Amazon Bedrock Prompt Manager, offering:
-- Version control and history
-- Extended prompt length limits
+
+- Version control and history tracking
+- Extended prompt length limits (up to 200KB)
 - Centralized management across applications
-- Easy updates and rollbacks
+- Easy updates and rollbacks without code changes
+- Automatic variable substitution ({{TODAY}}, {{UTC_TIME}})
+- Prompts are created during CDK deployment and retrieved at runtime
 
 ### Security Considerations and Prompt Injection
 
@@ -295,17 +486,20 @@ The following course is intended to provide you with a comprehensive step-by-ste
 This guide covers various techniques and best practices for prompt engineering through a series of lessons and exercises, organized into three levels: Beginner, Intermediate, and Advanced.
 
 #### Beginner
+
 - Chapter 1: Basic Prompt Structure
 - Chapter 2: Being Clear and Direct
 - Chapter 3: Assigning Roles
 
 #### Intermediate
+
 - Chapter 4: Separating Data from Instructions
 - Chapter 5: Formatting Output & Speaking for Claude
 - Chapter 6: Precognition (Thinking Step by Step)
 - Chapter 7: Using Examples
 
 #### Advanced
+
 - Chapter 8: Avoiding Hallucinations
 - Chapter 9: Building Complex Prompts (Industry Use Cases)
   - Complex Prompts from Scratch - Chatbot
@@ -319,6 +513,7 @@ This guide covers various techniques and best practices for prompt engineering t
   - Search & Retrieval
 
 By following the principles and techniques outlined in this guide, you can enhance the performance and reliability of your language model applications, ensuring that the AI assistant generates more relevant, coherent, and context-aware responses.
+
 ## Deploy with AWS Cloud9
 
 We recommend deploying with [AWS Cloud9](https://aws.amazon.com/cloud9/).
@@ -328,7 +523,9 @@ If you'd like to use Cloud9 to deploy the solution, you will need the following 
 - use `Amazon Linux 2023` as the platform.
 
 ## Local Deployment
+
 If you have decided not to use AWS Cloud9, verify that your environment satisfies the following prerequisites:
+
 ### Prerequisites
 
 Verify that your environment satisfies the following prerequisites:
@@ -339,28 +536,27 @@ You have:
 2. An access policy that allows you to create resources contained in the AWS Sample
 3. Both console and programmatic access
 4. [NodeJS lts](https://nodejs.org/en/download/) installed
-
    - If you are using [`nvm`](https://github.com/nvm-sh/nvm) you can run the following before proceeding
    - ```
      nvm install --lts
      ```
-5. [NPM lts](https://www.npmjs.com/) installed
 
+5. [NPM lts](https://www.npmjs.com/) installed
    - If you are using [`nvm`](https://github.com/nvm-sh/nvm) you can run the following before proceeding
    - ```
      nvm install-latest-npm
      ```
 
 6. [AWS CLI](https://aws.amazon.com/cli/) installed and configured to use with your AWS account
-8. [AWS CDK CLI](https://docs.aws.amazon.com/cdk/latest/guide/getting_started.html) installed
-9. [Finch](https://github.com/runfinch/finch) installed or [Docker](https://www.docker.com/) installed
+7. [AWS CDK CLI](https://docs.aws.amazon.com/cdk/latest/guide/getting_started.html) installed
+8. [Finch](https://github.com/runfinch/finch) installed or [Docker](https://www.docker.com/) installed
 
 ### Deployment
 
 1. Enable Amazon Bedrock models access in the deployment region:
    [How to enable Amazon Bedrock model access.](https://docs.aws.amazon.com/bedrock/latest/userguide/model-access.html)
 
-   Enable at least one of: 
+   Enable at least one of:
    - Claude 3 Opus
    - Claude 3 Sonnet
    - Claude 3 Haiku
@@ -374,7 +570,7 @@ You have:
    npm install
    ```
 
-3. *\[Optional only if you did not not done it before in the deployment region\]* Bootstrap the CDK environment:
+3. _\[Optional only if you did not not done it before in the deployment region\]_ Bootstrap the CDK environment:
 
    ```bash
    cdk bootstrap
@@ -385,6 +581,7 @@ You have:
    ```bash
    cdk deploy --region YOUR_DEPLOY_REGION
    ```
+
    where YOUR_DEPLOY_REGION is the AWS region which you would like to deploy the application. For example: `us-west-2`.
 
    If you are using [Finch](https://github.com/runfinch/finch) instead of [Docker](https://www.docker.com/) please add `CDK_DOCKER=finch` at the begin of the command like in the following example:
@@ -395,11 +592,12 @@ You have:
 
    This will create all the necessary resources on AWS, including the ECS cluster, Cognito user pool, CloudFront distribution, and more.
 
-4. After the deployment is complete, the CloudFront distribution URL will be displayed in the terminal. Use this URL to access the foundational-llm-chat application.
+5. After the deployment is complete, the CloudFront distribution URL will be displayed in the terminal. Use this URL to access the foundational-llm-chat application.
 
 ## Usage
 
 After the deployment you will get something similar to this:
+
 ```bash
  ✅  Foundational-LLM-ChatStack
 
@@ -417,7 +615,7 @@ Stack ARN: ARN
 
 The Amazon CloudFront distribution is indicated in the following line: `FoundationalLlmChatStack.NetworkingFoundationalLlmChat = CLOUDFRONT_DISTRIBUTION_ADDRESS`
 
-1. *Self sign up is not enabled in this AWS Sample* so you need to add manually the user to you Amazon Cognito user pool to allow them to access the application. Open the AWS console and navigate to Amazon Cognito. You find a User Pool named: `foundational-llm-chat-user-pool`. Open this user pool and create a user also verifing the email address;
+1. _Self sign up is not enabled in this AWS Sample_ so you need to add manually the user to you Amazon Cognito user pool to allow them to access the application. Open the AWS console and navigate to Amazon Cognito. You find a User Pool named: `foundational-llm-chat-user-pool`. Open this user pool and create a user also verifing the email address;
 2. Open the Foundational LLM Chat application in your web browser using the CloudFront distribution URL;
 3. Sign up or sign in using the AWS Cognito authentication flow;
 4. Select the desired chat profile to interact with the corresponding model;
@@ -430,48 +628,58 @@ The Amazon CloudFront distribution is indicated in the following line: `Foundati
 
 The application supports two distinct reasoning approaches based on the model type:
 
-#### Anthropic Claude Models (Standard Thinking)
+#### Standard Thinking (Anthropic-Style)
+
 For models configured with `"reasoning": true` or `"reasoning": {"enabled": true}`:
 
-1. **UI Controls**: 
-   - Toggle thinking on/off using the "Enable Thinking Process" switch
-   - Adjustable reasoning budget (token limit for thinking process)
-   - Temperature control is automatically disabled when thinking is enabled
-   - "Interleaved Thinking" beta feature for Claude models with tool calls
+**UI Controls**:
 
-2. **Behavior**:
-   - Thinking content is **always** included in conversation history
-   - Supports signatures in reasoning content
-   - Works in both streaming and non-streaming modes
-   - Thinking is displayed as a separate "Thinking 🤔" step in the UI
+- Toggle thinking on/off using the "Enable Thinking Process" switch
+- Adjustable reasoning budget (token limit for thinking process, 1024-64000 tokens)
+- Temperature control is automatically disabled when thinking is enabled
+- "Interleaved Thinking" beta feature for Claude models with tool calls (allows thinking between tool executions)
 
-#### OpenAI-Style Reasoning Models
-For models configured with `"reasoning": {"enabled": true, "openai_reasoning_modalities": true}`:
+**Behavior**:
 
-1. **UI Controls**:
-   - Thinking is **always enabled** (no toggle available)
-   - Reasoning effort selector (low/medium/high) instead of token budget
-   - Temperature and top_p are automatically set to 1.0
-   - No interleaved thinking option
+- Thinking content is **always** included in conversation history
+- Supports signatures in reasoning content
+- Works in both streaming and non-streaming modes
+- Thinking is displayed as a separate "Thinking 🤔" step in the UI
 
-2. **Behavior**:
-   - Thinking content is **only** included in conversation history when tool calls are made
-   - No signature support in reasoning content
-   - For simple conversations without tools, reasoning is shown in UI but excluded from history
-   - This prevents conversation history bloat while preserving reasoning context for complex interactions
+**Configuration Example**:
 
-#### Configuration Examples
-
-**Anthropic Claude Model:**
 ```json
 "Claude 3.7 Sonnet": {
   "id": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
-  "reasoning": true,
-  // ... other config
+  "reasoning": {
+    "enabled": true,
+    "hybrid": true,
+    "budget_thinking_tokens": true,
+    "temperature_forced": 1
+  }
 }
 ```
 
-**OpenAI-Style Reasoning Model:**
+#### OpenAI-Style Reasoning
+
+For models configured with `"reasoning": {"enabled": true, "openai_reasoning_modalities": true}`:
+
+**UI Controls**:
+
+- Thinking is **always enabled** (no toggle available)
+- Reasoning effort selector (low/medium/high) instead of token budget
+- Temperature and top_p are automatically set to 1.0
+- No interleaved thinking option
+
+**Behavior**:
+
+- Thinking content is **only** included in conversation history when tool calls are made
+- No signature support in reasoning content
+- For simple conversations without tools, reasoning is shown in UI but excluded from history
+- This prevents conversation history bloat while preserving reasoning context for complex interactions
+
+**Configuration Example**:
+
 ```json
 "DeepSeek V3": {
   "id": "deepseek.v3-v1:0",
@@ -479,26 +687,11 @@ For models configured with `"reasoning": {"enabled": true, "openai_reasoning_mod
   "reasoning": {
     "enabled": true,
     "openai_reasoning_modalities": true
-  },
-  // ... other config
+  }
 }
 ```
 
-**Note**: DeepSeek models currently have `tool` set to `false` as they require specific tool choice configurations that would force tool usage in all scenarios.
-
-**Advanced Anthropic Configuration:**
-```json
-"Claude Sonnet 4.5": {
-  "id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
-  "reasoning": {
-    "enabled": true,
-    "hybrid": true,
-    "budget_thinking_tokens": true,
-    "temperature_forced": 1
-  },
-  // ... other config
-}
-```
+**Note**: Models with OpenAI-style reasoning may have `"tool": false` if they require specific tool choice configurations that would force tool usage in all scenarios.
 
 ## Clean Up
 
@@ -522,8 +715,9 @@ Replace `YOUR_DEPLOY_REGION` with the AWS region where you deployed the applicat
 Note that deleting the stack will not automatically delete the CloudWatch logs and Amazon ECS task definition created during the deployment. You may want to manually delete these resources if you no longer need them to avoid incurring additional costs.
 
 ## FAQ
-1) what if I get: `failed: The stack named STACKNAME failed to deploy: UPDATE_ROLLBACK_COMPLETE: User pool already has a domain configured. (Service: AWSCognitoIdentityProviderService; Status Code: 400; Error Code: InvalidParameterException; Request ID: ID; Proxy: null)`?
-This is due to the following reason: https://github.com/aws/aws-cdk/issues/10062, so if you add to your config.json the optional field: "cognito_domain" with the already deployed cognito domain. You can find it inside parameter store in a parameter named: "prefixCognitoDomainName". Here an example: `databranchfoundational-llm-chat9778.auth.us-west-2.amazoncognito.com`.
+
+1. what if I get: `failed: The stack named STACKNAME failed to deploy: UPDATE_ROLLBACK_COMPLETE: User pool already has a domain configured. (Service: AWSCognitoIdentityProviderService; Status Code: 400; Error Code: InvalidParameterException; Request ID: ID; Proxy: null)`?
+   This is due to the following reason: https://github.com/aws/aws-cdk/issues/10062, so if you add to your config.json the optional field: "cognito_domain" with the already deployed cognito domain. You can find it inside parameter store in a parameter named: "prefixCognitoDomainName". Here an example: `databranchfoundational-llm-chat9778.auth.us-west-2.amazoncognito.com`.
 
 ## Production Deployment Considerations
 
