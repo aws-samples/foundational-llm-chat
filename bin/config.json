@@ -1,10 +1,10 @@
 {
   "default_system_prompt": "You are an assistant",
-  "cognito_domain": "v4foundational-llm-chat1538.auth.us-west-2.amazoncognito.com",
+  "cognito_domain": "SEE THE README, BUT FOR THE FIRST RUN THISIS AN EMPTY STRING",
   "max_characters_parameter": "None",
   "max_content_size_mb_parameter": "None",
   "default_aws_region": "us-west-2",
-  "prefix": "v4",
+  "prefix": "ADDYOURPREFIX",
   "bedrock_models": {
     "Claude Sonnet 4.5 (Global)": {
       "id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",

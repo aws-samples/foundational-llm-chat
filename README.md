@@ -716,8 +716,26 @@ Note that deleting the stack will not automatically delete the CloudWatch logs a
 
 ## FAQ
 
-1. what if I get: `failed: The stack named STACKNAME failed to deploy: UPDATE_ROLLBACK_COMPLETE: User pool already has a domain configured. (Service: AWSCognitoIdentityProviderService; Status Code: 400; Error Code: InvalidParameterException; Request ID: ID; Proxy: null)`?
+1. **What if I get: `failed: The stack named STACKNAME failed to deploy: UPDATE_ROLLBACK_COMPLETE: User pool already has a domain configured`?**
+
    This is due to the following reason: https://github.com/aws/aws-cdk/issues/10062, so if you add to your config.json the optional field: "cognito_domain" with the already deployed cognito domain. You can find it inside parameter store in a parameter named: "prefixCognitoDomainName". Here an example: `databranchfoundational-llm-chat9778.auth.us-west-2.amazoncognito.com`.
+
+2. **Where are MCP (Model Context Protocol) connections stored? How are they different for different users?**
+
+   MCP connections are stored **client-side** in each user's browser session, not on the server. Here's how it works:
+   - **Session-Based Storage**: Each user has their own isolated Chainlit session with a 15-day timeout
+   - **Per-User Isolation**: MCP connections are stored in `cl.user_session` and are completely isolated between users
+   - **No Server-Side Storage**: MCP connections are NOT stored in ECS containers, DynamoDB, or S3
+   - **User-Specific**: Each user can connect to different MCP servers from their client
+   - **Security**: User A cannot access User B's MCP tools - complete separation
+
+   When a user connects an MCP server:
+   1. The connection is established from their browser/client
+   2. Tools are discovered and stored in their session (`@on_mcp_connect`)
+   3. Tools are available only for that user's requests
+   4. Connection is cleaned up when the session ends (`@on_mcp_disconnect`)
+
+   For more information about MCP and Chainlit sessions, see the [Chainlit documentation](https://docs.chainlit.io/get-started/overview).
 
 ## Production Deployment Considerations
 
