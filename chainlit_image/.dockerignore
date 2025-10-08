@@ -3,3 +3,10 @@
 *.py[cod]
 *$py.class
 *.so
+**/.chainlit/.langchain.db
+**/.chainlit/chat_files/
+**/.git
+**/.gitignore
+**/requirements.txt
+**/run_chainlit.sh
+**/.DS_Store
