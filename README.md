@@ -38,7 +38,7 @@ Foundational LLM Chat is a Chainlit application built using AWS CDK and Converse
     - Claude Opus 4, Claude Sonnet 4, Claude Sonnet 4.5
     - Claude 3 Opus, Claude 3 Sonnet, Claude 3.5 Sonnet
     - Claude 3.7 Sonnet (with extended thinking capabilities)
-    - Claude 3 Haiku, Claude 3.5 Haiku
+    - Claude 3 Haiku, Claude 3.5 Haiku, Claude Haiku 4.5
   - 🦙 Meta Llama models:
     - Llama 3.1 (8B, 70B), Llama 3.2 (1B, 3B, 11B Vision, 90B Vision), Llama 3.3 (70B)
     - Llama 4 (Scout, Maverick variants)
