@@ -6,7 +6,7 @@
   "default_aws_region": "us-west-2",
   "prefix": "ADDYOURPREFIX",
   "bedrock_models": {
-    "Claude Sonnet 4.5 (Global)": {
+    "Claude Sonnet 4.5": {
       "id": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
       "inference_profile": {
         "prefix": "global",
@@ -54,24 +54,53 @@
         "temperature_forced": 1
       }
     },
-    "Claude 3.5 Haiku": {
-      "id": "us.anthropic.claude-3-5-haiku-20241022-v1:0",
+    "Claude Haiku 4.5": {
+      "id": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
       "inference_profile": {
-        "prefix": "us",
-        "region": "us-west-2"
+        "prefix": "global",
+        "region": "us-west-2",
+        "global": true
       },
-      "region": ["us-west-2", "us-east-1", "us-east-2"],
+      "region": [
+        "us-west-2",
+        "us-west-1",
+        "us-east-2",
+        "us-east-1",
+        "sa-east-1",
+        "eu-west-3",
+        "eu-west-2",
+        "eu-west-1",
+        "eu-south-2",
+        "eu-south-1",
+        "eu-north-1",
+        "eu-central-2",
+        "eu-central-1",
+        "ca-central-1",
+        "ap-southeast-4",
+        "ap-southeast-3",
+        "ap-southeast-2",
+        "ap-southeast-1",
+        "ap-south-2",
+        "ap-south-1",
+        "ap-northeast-3",
+        "ap-northeast-2",
+        "ap-northeast-1"
+      ],
       "cost": {
-        "input_1k_price": 0.0008,
-        "output_1k_price": 0.004
+        "input_1k_price": 0.001,
+        "output_1k_price": 0.005
       },
       "default": false,
-      "maxTokens": 8192,
-      "vision": false,
+      "maxTokens": 64000,
+      "vision": true,
       "document": true,
       "tool": true,
-      "streaming": true,
-      "reasoning": false
+      "reasoning": {
+        "enabled": true,
+        "hybrid": true,
+        "budget_thinking_tokens": true,
+        "temperature_forced": 1
+      }
     },
     "Claude 3.7 Sonnet": {
       "id": "us.anthropic.claude-3-7-sonnet-20250219-v1:0",
