@@ -1,4 +1,15 @@
-import { CfnOutput, Duration, RemovalPolicy } from "aws-cdk-lib";
+// NodeJS Built-Ins:
+import * as crypto from "crypto";
+import {
+  CfnOutput,
+  Duration,
+  Names,
+  RemovalPolicy,
+  Stack,
+  Token,
+} from "aws-cdk-lib";
+
+// External Dependencies:
 import { Construct } from "constructs";
 import * as cognito from "aws-cdk-lib/aws-cognito";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
@@ -86,30 +97,23 @@ export class Cognito extends Construct {
     );
 
     let cognitoDomainUrl: string;
-
-    // IMPORTANT: To prevent domain deletion when updating the stack:
-    // - On first deployment: leave cognito_domain empty, CDK will create the domain
-    // - On subsequent deployments: KEEP cognito_domain empty to maintain the domain
-    // - Only fill cognito_domain if you're migrating from an external domain
-    //
-    // The cognito_domain parameter exists to handle the CDK bug where updating
-    // the stack tries to recreate the domain (causing "domain already exists" error).
-    // By providing the domain name, we tell CDK to skip domain creation.
-
     if (props.cognito_domain === undefined || props.cognito_domain === "") {
       // Create a Cognito User Pool Domain
       const cognitoDomain = this.userPool.addDomain("CognitoDomain", {
         cognitoDomain: {
-          domainPrefix: `${props.prefix.toLowerCase()}foundational-llm-chat${Math.floor(Math.random() * (10000 - 100) + 100)}`,
+          domainPrefix: this.generateUniqueDomainName({
+            // Max length of a Cognito domain prefix is 63 per:
+            // https://docs.aws.amazon.com/cognito-user-identity-pools/latest/APIReference/API_CreateUserPoolDomain.html#CognitoUserPools-CreateUserPoolDomain-request-Domain
+            // However, in practice we see validation errors whenever the *overall domain* exceeds
+            // this limit - meaning we only have 24-27 (depending on the region name) characters to
+            // play with.
+            maxLength: 24 - props.prefix.length,
+            prefix: props.prefix,
+          }),
         },
       });
       cognitoDomainUrl = cognitoDomain.baseUrl().replace("https://", "");
     } else {
-      // Use the provided domain URL
-      // WARNING: Changing from empty to filled will cause CloudFormation to DELETE
-      // the existing domain! Only use this if:
-      // 1. You're doing a fresh deployment with an existing domain, OR
-      // 2. You've manually created the domain in AWS Console
       cognitoDomainUrl = props.cognito_domain;
     }
 
@@ -136,5 +140,79 @@ export class Cognito extends Construct {
       value: this.userPool.userPoolId,
       description: "User Pool ID",
     });
+  }
+
+  /**
+   * Generate a globally-unique but repeatable domain prefix dependent on deployment context
+   *
+   * This method uses logic inspired by CDK's generatePhysicalName, which is a private method so we
+   * can't use that API directly. We also tweak it a little to support passing a user-specified
+   * prefix, and allocating remaining character budget depending how long that prefix is.
+   *
+   * @see https://github.com/aws/aws-cdk/blob/main/packages/aws-cdk-lib/core/lib/private/physical-name-generator.ts
+   */
+  private generateUniqueDomainName(config: {
+    maxLength: number;
+    prefix?: string;
+  }): string {
+    const prefix = config.prefix || "";
+    let nFreeChars = config.maxLength - prefix.length;
+    if (nFreeChars < 0) {
+      throw new Error(
+        `Prefix '${prefix}' is longer than the maximum length ${config.maxLength}`,
+      );
+    }
+
+    const stack = Stack.of(this);
+    const nodeUniqueId = Names.nodeUniqueId(this.node);
+
+    const region: string = stack.region;
+    if (Token.isUnresolved(region) || !region) {
+      throw new Error(
+        `Cannot generate a unique ID for ${this.node.path}, because the region is un-resolved or missing`,
+      );
+    }
+
+    const account: string = stack.account;
+    if (Token.isUnresolved(account) || !account) {
+      throw new Error(
+        `Cannot generate a unique ID for ${this.node.path}, because the account is un-resolved or missing`,
+      );
+    }
+
+    const unknownStackName = Token.isUnresolved(stack.stackName);
+    const sha256 = crypto
+      .createHash("sha256")
+      .update(prefix)
+      .update(nodeUniqueId)
+      .update(region)
+      .update(account);
+
+    if (!unknownStackName) sha256.update(stack.stackName);
+
+    let maxHashLen: number;
+    if (nFreeChars <= 8) {
+      maxHashLen = nFreeChars;
+    } else {
+      maxHashLen = Math.floor(6 + (nFreeChars - 6) / 3);
+    }
+    const hashPart = sha256.digest("hex").slice(0, maxHashLen);
+    nFreeChars -= hashPart.length;
+
+    let maxIdPartLen: number;
+    if (nFreeChars <= 4 || unknownStackName) {
+      maxIdPartLen = nFreeChars;
+    } else {
+      maxIdPartLen = Math.floor(2 + (nFreeChars - 2) / 2);
+    }
+    // Need the condition because .slice(-0) returns whole string:
+    const idPart = maxIdPartLen ? nodeUniqueId.slice(-maxIdPartLen) : "";
+    nFreeChars -= idPart.length;
+
+    const stackPart = unknownStackName
+      ? ""
+      : stack.stackName.slice(0, nFreeChars);
+    const ret = [prefix, stackPart, idPart, hashPart].join("");
+    return ret.toLowerCase();
   }
 }

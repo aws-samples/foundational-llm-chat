@@ -95,7 +95,7 @@ The application is configured through a `config.json` file in the `./bin` folder
 
 5. **`prefix`**: This field allows you to set a prefix for resource names created by the application. You can leave it empty or provide a custom prefix if desired.
 
-6. **`cognito_domain`**: This field allows you to specify an already existent cognito domain name. It is _optional_ and in the first deployement is expected to not be defined. See FAQ section for the reason of this parameter existance.
+6. **`cognito_domain`**: This field allows you to _optionally_ specify a pre-existing [Cognito domain name](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-assign-domain.html). If left blank (by default) a new domain will be generated for you automatically.
 
 ### Model Configuration
 
