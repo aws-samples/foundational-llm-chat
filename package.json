@@ -6,7 +6,9 @@
   },
   "scripts": {
     "build": "tsc",
-    "format": "prettier --list-different --write .",
+    "format": "npm run format-ts && npm run format-python",
+    "format-ts": "prettier --list-different --write .",
+    "format-python": "ts-node bin/format-python.ts",
     "lint": "eslint --fix .",
     "watch": "tsc -w",
     "test": "jest",
