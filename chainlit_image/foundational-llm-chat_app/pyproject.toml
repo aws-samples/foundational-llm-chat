@@ -5,7 +5,7 @@ description = "Example Chainlit-based UI for talking to Foundation Models on Ama
 requires-python = ">=3.13"
 dependencies = [
     "boto3==1.40.46",
-    "chainlit==2.8.3",
+    "chainlit==2.8.5",
     "pillow==11.3.0",
 ]
 

@@ -241,7 +241,7 @@ wheels = [
 
 [[package]]
 name = "chainlit"
-version = "2.8.3"
+version = "2.8.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -269,9 +269,9 @@ dependencies = [
     { name = "uvicorn" },
     { name = "watchfiles" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5a/86/c569ec39fddfaf5166194ff444cbb29367dbd9644cdbeef8c9602d4e83e6/chainlit-2.8.3.tar.gz", hash = "sha256:fbd70aa5563e93e148a7fed251c7b4ac79c14f0946ebeb6516c1605fa1ee0b15", size = 9881678, upload-time = "2025-10-06T02:45:53.151Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/46/71/d0465682910792ff382d604b9973dcd0115c682dde6c22753eaa4304afe3/chainlit-2.8.5.tar.gz", hash = "sha256:ebe73b3ad9d7e545454432eb280618ef92d69d6470eb66488149c9bb7f6c526d", size = 9884512, upload-time = "2025-11-07T22:58:11.181Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e4/b8/59a9df32f6eb354d84d80ac50c8074f92729e6947c6dbf1fd77621930ded/chainlit-2.8.3-py3-none-any.whl", hash = "sha256:180b37c832a23e0140c48b02558a8a28e3080ff34eb98d8d27bc04d119b2a7e0", size = 9723409, upload-time = "2025-10-06T02:45:50.759Z" },
+    { url = "https://files.pythonhosted.org/packages/2f/e2/c9a1ff354acc05fe910a19a8053647674315c091f33fe3b1eef3c69fcbe7/chainlit-2.8.5-py3-none-any.whl", hash = "sha256:1d6ef81a14f4b9a526229b0e6839f364c8ef1a3335e648889d43c0c8f8444a8e", size = 9725985, upload-time = "2025-11-07T22:58:08.631Z" },
 ]
 
 [[package]]
@@ -428,7 +428,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "boto3", specifier = "==1.40.46" },
-    { name = "chainlit", specifier = "==2.8.3" },
+    { name = "chainlit", specifier = "==2.8.5" },
     { name = "pillow", specifier = "==11.3.0" },
 ]
 
